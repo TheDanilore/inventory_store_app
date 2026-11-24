@@ -1273,27 +1273,39 @@ ALTER FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offs
 
 CREATE OR REPLACE FUNCTION "public"."get_credit_movements_totals_rpc"("p_credit_id" "uuid", "p_date_filter" "text" DEFAULT NULL::"text") RETURNS TABLE("total_charged" numeric, "total_paid" numeric, "charge_count" bigint, "payment_count" bigint)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
     AS $$
 DECLARE
-    v_from_date TIMESTAMPTZ;
+    v_start_date timestamptz := NULL;
 BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('credits.manage'::text)
+        OR public.user_has_permission('reports.financial'::text)
+        OR public.user_has_permission('pos.sale'::text)
+        OR public.is_admin()
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para consultar totales de movimientos.' USING ERRCODE = '42501';
+    END IF;
+
     IF p_date_filter = '30_days' THEN
-        v_from_date := NOW() - INTERVAL '30 days';
+        v_start_date := now() - interval '30 days';
     ELSIF p_date_filter = 'this_month' THEN
-        v_from_date := DATE_TRUNC('month', NOW());
-    ELSE
-        v_from_date := NULL;
+        v_start_date := date_trunc('month', now());
     END IF;
 
     RETURN QUERY
-    SELECT 
-        COALESCE(SUM(amount) FILTER (WHERE movement_type = 'CHARGE'), 0)::NUMERIC AS total_charged,
-        COALESCE(SUM(amount) FILTER (WHERE movement_type = 'PAYMENT'), 0)::NUMERIC AS total_paid,
-        COUNT(*) FILTER (WHERE movement_type = 'CHARGE')::BIGINT AS charge_count,
-        COUNT(*) FILTER (WHERE movement_type = 'PAYMENT')::BIGINT AS payment_count
+    SELECT
+        coalesce(SUM(amount) FILTER (WHERE movement_type = 'CHARGE'), 0) AS total_charged,
+        coalesce(SUM(amount) FILTER (WHERE movement_type != 'CHARGE'), 0) AS total_paid,
+        COUNT(*) FILTER (WHERE movement_type = 'CHARGE') AS charge_count,
+        COUNT(*) FILTER (WHERE movement_type != 'CHARGE') AS payment_count
     FROM public.customer_credit_movements
     WHERE customer_credit_id = p_credit_id
-      AND (v_from_date IS NULL OR created_at >= v_from_date);
+      AND (v_start_date IS NULL OR created_at >= v_start_date);
 END;
 $$;
 
@@ -1301,45 +1313,214 @@ $$;
 ALTER FUNCTION "public"."get_credit_movements_totals_rpc"("p_credit_id" "uuid", "p_date_filter" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text" DEFAULT ''::"text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_customer_credits_page_rpc"("p_search_query" "text" DEFAULT ''::"text", "p_with_debt_only" boolean DEFAULT false, "p_limit" integer DEFAULT 15, "p_offset" integer DEFAULT 0, "p_include_stats" boolean DEFAULT true) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
     AS $$
 DECLARE
-  v_total_debt numeric := 0;
-  v_active_count int := 0;
-  v_suspended_count int := 0;
-  v_maxed_out_count int := 0;
-  v_debt_count int := 0;
-  v_result jsonb;
+    v_q text := trim(coalesce(p_search_query, ''));
+    v_limit integer := LEAST(GREATEST(coalesce(p_limit, 15), 1), 100);
+    v_offset integer := GREATEST(coalesce(p_offset, 0), 0);
+    v_only_debt boolean := coalesce(p_with_debt_only, false);
+    v_items jsonb := '[]'::jsonb;
+    v_total_count bigint := 0;
+    v_stats jsonb := NULL;
 BEGIN
-  SELECT 
-    COALESCE(SUM(cc.current_debt), 0),
-    COUNT(*) FILTER (WHERE cc.is_active = true),
-    COUNT(*) FILTER (WHERE cc.is_active = false),
-    COUNT(*) FILTER (WHERE cc.is_active = true AND cc.credit_limit > 0 AND cc.current_debt >= cc.credit_limit),
-    COUNT(*) FILTER (WHERE cc.is_active = true AND cc.current_debt > 0)
-  INTO 
-    v_total_debt, 
-    v_active_count, 
-    v_suspended_count, 
-    v_maxed_out_count, 
-    v_debt_count
-  FROM customer_credits cc
-  JOIN profiles p ON p.id = cc.profile_id
-  WHERE p_search_query = '' 
-     OR p.full_name ILIKE '%' || p_search_query || '%'
-     OR p.document_number ILIKE '%' || p_search_query || '%'
-     OR p.phone ILIKE '%' || p_search_query || '%';
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
 
-  v_result := jsonb_build_object(
-    'totalDebt', v_total_debt,
-    'activeAccounts', v_active_count,
-    'suspendedAccounts', v_suspended_count,
-    'maxedOutAccounts', v_maxed_out_count,
-    'debtCount', v_debt_count
-  );
+    IF NOT (
+        public.user_has_permission('credits.manage'::text)
+        OR public.user_has_permission('reports.financial'::text)
+        OR public.user_has_permission('pos.sale'::text)
+        OR public.is_admin()
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para consultar créditos de clientes.' USING ERRCODE = '42501';
+    END IF;
 
-  RETURN v_result;
+    WITH resolved AS (
+        SELECT
+            cc.id,
+            coalesce(cc.customer_record_id, c.id) AS customer_record_id,
+            cc.profile_id,
+            cc.credit_limit,
+            cc.current_debt,
+            cc.is_active,
+            cc.created_at,
+            cc.updated_at,
+            coalesce(c.full_name, p.full_name, 'Cliente desconocido') AS customer_name,
+            coalesce(c.document_number, p.document_number) AS customer_document,
+            coalesce(c.document_type, p.document_type) AS customer_document_type,
+            coalesce(c.phone, p.phone) AS customer_phone
+        FROM public.customer_credits cc
+        LEFT JOIN public.customers c
+          ON c.id = cc.customer_record_id
+          OR (cc.customer_record_id IS NULL AND cc.profile_id IS NOT NULL AND c.profile_id = cc.profile_id)
+        LEFT JOIN public.profiles p
+          ON p.id = cc.profile_id
+        WHERE (c.id IS NOT NULL OR p.id IS NOT NULL)
+    ),
+    searched AS (
+        SELECT *
+        FROM resolved r
+        WHERE v_q = ''
+           OR r.customer_name ILIKE '%' || v_q || '%'
+           OR coalesce(r.customer_document, '') ILIKE '%' || v_q || '%'
+           OR coalesce(r.customer_phone, '') ILIKE '%' || v_q || '%'
+    ),
+    filtered AS (
+        SELECT *
+        FROM searched s
+        WHERE (NOT v_only_debt OR s.current_debt > 0)
+    ),
+    paged AS (
+        SELECT
+            f.*,
+            COUNT(*) OVER() AS total_count
+        FROM filtered f
+        ORDER BY f.current_debt DESC, f.id ASC
+        LIMIT v_limit
+        OFFSET v_offset
+    )
+    SELECT
+        coalesce(
+            jsonb_agg(
+                jsonb_build_object(
+                    'id', pg.id,
+                    'customer_record_id', pg.customer_record_id,
+                    'profile_id', pg.profile_id,
+                    'credit_limit', pg.credit_limit,
+                    'current_debt', pg.current_debt,
+                    'is_active', pg.is_active,
+                    'created_at', pg.created_at,
+                    'updated_at', pg.updated_at,
+                    'customer_name', pg.customer_name,
+                    'customer_document', pg.customer_document,
+                    'customer_document_type', pg.customer_document_type,
+                    'customer_phone', pg.customer_phone
+                )
+                ORDER BY pg.current_debt DESC, pg.id ASC
+            ),
+            '[]'::jsonb
+        ),
+        coalesce(MAX(pg.total_count), 0)
+    INTO v_items, v_total_count
+    FROM paged pg;
+
+    IF v_total_count = 0 AND v_offset > 0 THEN
+        SELECT COUNT(*)
+        INTO v_total_count
+        FROM public.customer_credits cc
+        LEFT JOIN public.customers c
+          ON c.id = cc.customer_record_id
+          OR (cc.customer_record_id IS NULL AND cc.profile_id IS NOT NULL AND c.profile_id = cc.profile_id)
+        LEFT JOIN public.profiles p
+          ON p.id = cc.profile_id
+        WHERE (c.id IS NOT NULL OR p.id IS NOT NULL)
+          AND (
+              v_q = ''
+              OR coalesce(c.full_name, p.full_name, '') ILIKE '%' || v_q || '%'
+              OR coalesce(c.document_number, p.document_number, '') ILIKE '%' || v_q || '%'
+              OR coalesce(c.phone, p.phone, '') ILIKE '%' || v_q || '%'
+          )
+          AND (NOT v_only_debt OR cc.current_debt > 0);
+    END IF;
+
+    IF p_include_stats THEN
+        SELECT jsonb_build_object(
+            'totalDebt', coalesce(SUM(cc.current_debt), 0),
+            'activeAccounts', COUNT(*) FILTER (WHERE cc.is_active = true),
+            'suspendedAccounts', COUNT(*) FILTER (WHERE cc.is_active = false),
+            'maxedOutAccounts', COUNT(*) FILTER (
+                WHERE cc.is_active = true
+                  AND cc.credit_limit > 0
+                  AND cc.current_debt >= cc.credit_limit
+            ),
+            'debtCount', COUNT(*) FILTER (
+                WHERE cc.is_active = true
+                  AND cc.current_debt > 0
+            )
+        )
+        INTO v_stats
+        FROM public.customer_credits cc
+        LEFT JOIN public.customers c
+          ON c.id = cc.customer_record_id
+          OR (cc.customer_record_id IS NULL AND cc.profile_id IS NOT NULL AND c.profile_id = cc.profile_id)
+        LEFT JOIN public.profiles p
+          ON p.id = cc.profile_id
+        WHERE (c.id IS NOT NULL OR p.id IS NOT NULL)
+          AND (
+              v_q = ''
+              OR coalesce(c.full_name, p.full_name, '') ILIKE '%' || v_q || '%'
+              OR coalesce(c.document_number, p.document_number, '') ILIKE '%' || v_q || '%'
+              OR coalesce(c.phone, p.phone, '') ILIKE '%' || v_q || '%'
+          );
+    END IF;
+
+    RETURN jsonb_build_object(
+        'items', v_items,
+        'totalCount', v_total_count,
+        'stats', v_stats
+    );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_customer_credits_page_rpc"("p_search_query" "text", "p_with_debt_only" boolean, "p_limit" integer, "p_offset" integer, "p_include_stats" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text" DEFAULT ''::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_q text := trim(coalesce(p_search_query, ''));
+    v_result jsonb;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('credits.manage'::text)
+        OR public.user_has_permission('reports.financial'::text)
+        OR public.user_has_permission('pos.sale'::text)
+        OR public.is_admin()
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para consultar estadísticas de créditos.' USING ERRCODE = '42501';
+    END IF;
+
+    SELECT jsonb_build_object(
+        'totalDebt', coalesce(SUM(cc.current_debt), 0),
+        'activeAccounts', COUNT(*) FILTER (WHERE cc.is_active = true),
+        'suspendedAccounts', COUNT(*) FILTER (WHERE cc.is_active = false),
+        'maxedOutAccounts', COUNT(*) FILTER (
+            WHERE cc.is_active = true
+              AND cc.credit_limit > 0
+              AND cc.current_debt >= cc.credit_limit
+        ),
+        'debtCount', COUNT(*) FILTER (
+            WHERE cc.is_active = true
+              AND cc.current_debt > 0
+        )
+    )
+    INTO v_result
+    FROM public.customer_credits cc
+    LEFT JOIN public.customers c
+      ON c.id = cc.customer_record_id
+      OR (cc.customer_record_id IS NULL AND cc.profile_id IS NOT NULL AND c.profile_id = cc.profile_id)
+    LEFT JOIN public.profiles p
+      ON p.id = cc.profile_id
+    WHERE (c.id IS NOT NULL OR p.id IS NOT NULL)
+      AND (
+          v_q = ''
+          OR coalesce(c.full_name, p.full_name, '') ILIKE '%' || v_q || '%'
+          OR coalesce(c.document_number, p.document_number, '') ILIKE '%' || v_q || '%'
+          OR coalesce(c.phone, p.phone, '') ILIKE '%' || v_q || '%'
+      );
+
+    RETURN v_result;
 END;
 $$;
 
@@ -1349,21 +1530,37 @@ ALTER FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text"
 
 CREATE OR REPLACE FUNCTION "public"."get_customers_global_stats_rpc"() RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'auth'
     AS $$
 DECLARE
     v_total int;
     v_active int;
     v_inactive int;
+    v_total_wallet numeric;
     v_total_revenue numeric;
     v_total_debt numeric;
     v_debt_count int;
 BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('customers.read'::text)
+        OR public.user_has_permission('customers.manage'::text)
+        OR public.user_has_permission('pos.sale'::text)
+        OR public.user_has_permission('orders.read'::text)
+        OR public.is_admin()
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para consultar estadísticas de clientes.' USING ERRCODE = '42501';
+    END IF;
+
     SELECT
         COUNT(*),
         COUNT(*) FILTER (WHERE is_active = true),
-        COUNT(*) FILTER (WHERE is_active = false)
-    INTO v_total, v_active, v_inactive
+        COUNT(*) FILTER (WHERE is_active = false),
+        COALESCE(SUM(wallet_balance), 0)
+    INTO v_total, v_active, v_inactive, v_total_wallet
     FROM public.customers;
 
     SELECT COALESCE(SUM(total_amount), 0)
@@ -1381,6 +1578,7 @@ BEGIN
         'totalCount', v_total,
         'activeCount', v_active,
         'inactiveCount', v_inactive,
+        'totalWalletBalance', v_total_wallet,
         'totalRevenue', v_total_revenue,
         'totalDebt', v_total_debt,
         'debtCustomersCount', v_debt_count
@@ -1390,6 +1588,161 @@ $$;
 
 
 ALTER FUNCTION "public"."get_customers_global_stats_rpc"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_customers_page_rpc"("p_search_query" "text" DEFAULT ''::"text", "p_only_with_debt" boolean DEFAULT false, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_q text := trim(coalesce(p_search_query, ''));
+    v_limit integer := LEAST(GREATEST(coalesce(p_limit, 20), 1), 100);
+    v_offset integer := GREATEST(coalesce(p_offset, 0), 0);
+    v_only_debt boolean := coalesce(p_only_with_debt, false);
+    v_items jsonb := '[]'::jsonb;
+    v_total_count bigint := 0;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('customers.read'::text)
+        OR public.user_has_permission('customers.manage'::text)
+        OR public.user_has_permission('pos.sale'::text)
+        OR public.user_has_permission('orders.read'::text)
+        OR public.is_admin()
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para consultar clientes.' USING ERRCODE = '42501';
+    END IF;
+
+    WITH filtered AS (
+        SELECT
+            c.id,
+            c.profile_id,
+            c.full_name,
+            c.phone,
+            c.document_number,
+            c.document_type,
+            c.avatar_url,
+            c.wallet_balance,
+            c.is_active,
+            c.created_at,
+            coalesce(cc.current_debt, 0)::numeric(14,2) AS current_debt,
+            coalesce(cc.credit_limit, 0)::numeric(14,2) AS credit_limit
+        FROM public.customers c
+        LEFT JOIN LATERAL (
+            SELECT
+                cred.current_debt,
+                cred.credit_limit
+            FROM public.customer_credits cred
+            WHERE cred.customer_record_id = c.id
+               OR (c.profile_id IS NOT NULL AND cred.profile_id = c.profile_id)
+            ORDER BY (cred.customer_record_id = c.id) DESC
+            LIMIT 1
+        ) cc ON true
+        WHERE (
+            v_q = ''
+            OR c.full_name ILIKE '%' || v_q || '%'
+            OR coalesce(c.document_number, '') ILIKE '%' || v_q || '%'
+            OR coalesce(c.phone, '') ILIKE '%' || v_q || '%'
+        )
+        AND (NOT v_only_debt OR coalesce(cc.current_debt, 0) > 0)
+    ),
+    paged AS (
+        SELECT
+            f.*,
+            COUNT(*) OVER() AS total_count
+        FROM filtered f
+        ORDER BY f.created_at DESC, f.id DESC
+        LIMIT v_limit
+        OFFSET v_offset
+    ),
+    enriched AS (
+        SELECT
+            p.*,
+            coalesce(ord.total_revenue, 0)::numeric(14,2) AS total_revenue,
+            coalesce(ord.order_count, 0)::bigint AS order_count,
+            ord.last_order_at,
+            coalesce(loc.locations_count, 0)::bigint AS locations_count
+        FROM paged p
+        LEFT JOIN LATERAL (
+            SELECT
+                coalesce(SUM(o.total_amount), 0) AS total_revenue,
+                COUNT(o.id) AS order_count,
+                MAX(o.created_at) AS last_order_at
+            FROM public.orders o
+            WHERE o.status = 'COMPLETED'
+              AND (
+                  o.customer_record_id = p.id
+                  OR (p.profile_id IS NOT NULL AND o.customer_id = p.profile_id)
+              )
+        ) ord ON true
+        LEFT JOIN LATERAL (
+            SELECT COUNT(cl.id) AS locations_count
+            FROM public.customer_locations cl
+            WHERE cl.customer_record_id = p.id
+               OR (p.profile_id IS NOT NULL AND cl.profile_id = p.profile_id)
+        ) loc ON true
+    )
+    SELECT
+        coalesce(
+            jsonb_agg(
+                jsonb_build_object(
+                    'id', e.id,
+                    'full_name', e.full_name,
+                    'phone', e.phone,
+                    'document_number', e.document_number,
+                    'document_type', e.document_type,
+                    'avatar_url', e.avatar_url,
+                    'wallet_balance', e.wallet_balance,
+                    'is_active', e.is_active,
+                    'created_at', e.created_at,
+                    'current_debt', e.current_debt,
+                    'credit_limit', e.credit_limit,
+                    'total_revenue', e.total_revenue,
+                    'order_count', e.order_count,
+                    'last_order_at', e.last_order_at,
+                    'locations_count', e.locations_count
+                )
+                ORDER BY e.created_at DESC, e.id DESC
+            ),
+            '[]'::jsonb
+        ),
+        coalesce(MAX(e.total_count), 0)
+    INTO v_items, v_total_count
+    FROM enriched e;
+
+    IF v_total_count = 0 AND v_offset > 0 THEN
+        SELECT COUNT(*)
+        INTO v_total_count
+        FROM public.customers c
+        LEFT JOIN LATERAL (
+            SELECT cred.current_debt
+            FROM public.customer_credits cred
+            WHERE cred.customer_record_id = c.id
+               OR (c.profile_id IS NOT NULL AND cred.profile_id = c.profile_id)
+            ORDER BY (cred.customer_record_id = c.id) DESC
+            LIMIT 1
+        ) cc ON true
+        WHERE (
+            v_q = ''
+            OR c.full_name ILIKE '%' || v_q || '%'
+            OR coalesce(c.document_number, '') ILIKE '%' || v_q || '%'
+            OR coalesce(c.phone, '') ILIKE '%' || v_q || '%'
+        )
+        AND (NOT v_only_debt OR coalesce(cc.current_debt, 0) > 0);
+    END IF;
+
+    RETURN jsonb_build_object(
+        'items', v_items,
+        'totalCount', v_total_count
+    );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_customers_page_rpc"("p_search_query" "text", "p_only_with_debt" boolean, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_dashboard_sales_overview"("p_from" "date" DEFAULT NULL::"date", "p_to" "date" DEFAULT NULL::"date", "p_warehouse_id" "uuid" DEFAULT NULL::"uuid", "p_tz" "text" DEFAULT 'America/Lima'::"text") RETURNS "jsonb"
@@ -1951,50 +2304,292 @@ $$;
 ALTER FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text" DEFAULT ''::"text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_supplier_credits_page_rpc"("p_search_query" "text" DEFAULT ''::"text", "p_with_debt_only" boolean DEFAULT false, "p_limit" integer DEFAULT 15, "p_offset" integer DEFAULT 0, "p_include_stats" boolean DEFAULT true) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
     AS $$
 DECLARE
-  v_total_debt numeric := 0;
-  v_active_count int := 0;
-  v_suspended_count int := 0;
-  v_maxed_out_count int := 0;
-  v_debt_count int := 0;
-  v_result jsonb;
+    v_q text := trim(coalesce(p_search_query, ''));
+    v_limit integer := LEAST(GREATEST(coalesce(p_limit, 15), 1), 100);
+    v_offset integer := GREATEST(coalesce(p_offset, 0), 0);
+    v_items jsonb := '[]'::jsonb;
+    v_total_count bigint := 0;
+    v_stats jsonb := NULL;
 BEGIN
-  SELECT 
-    COALESCE(SUM(sc.current_debt), 0),
-    COUNT(*) FILTER (WHERE sc.is_active = true),
-    COUNT(*) FILTER (WHERE sc.is_active = false),
-    COUNT(*) FILTER (WHERE sc.is_active = true AND sc.current_debt >= sc.credit_limit AND sc.credit_limit > 0),
-    COUNT(*) FILTER (WHERE sc.is_active = true AND sc.current_debt > 0)
-  INTO 
-    v_total_debt, 
-    v_active_count, 
-    v_suspended_count, 
-    v_maxed_out_count, 
-    v_debt_count
-  FROM supplier_credits sc
-  JOIN suppliers s ON s.id = sc.supplier_id
-  WHERE p_search_query = '' 
-     OR s.name ILIKE '%' || p_search_query || '%'
-     OR s.tax_id ILIKE '%' || p_search_query || '%'
-     OR s.phone ILIKE '%' || p_search_query || '%';
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
 
-  v_result := jsonb_build_object(
-    'totalDebt', v_total_debt,
-    'activeAccounts', v_active_count,
-    'suspendedAccounts', v_suspended_count,
-    'maxedOutAccounts', v_maxed_out_count,
-    'debtCount', v_debt_count
-  );
+    IF NOT (
+        public.user_has_permission('purchases.view'::text)
+        OR public.user_has_permission('reports.financial'::text)
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para ver créditos de proveedores.' USING ERRCODE = '42501';
+    END IF;
 
-  RETURN v_result;
+    WITH filtered AS (
+        SELECT
+            sc.id,
+            sc.supplier_id,
+            sc.credit_limit,
+            sc.current_debt,
+            sc.is_active,
+            s.name AS supplier_name,
+            s.tax_id AS supplier_tax_id,
+            s.phone AS supplier_phone
+        FROM public.supplier_credits sc
+        INNER JOIN public.suppliers s ON s.id = sc.supplier_id
+        WHERE (
+            v_q = ''
+            OR s.name ILIKE '%' || v_q || '%'
+            OR coalesce(s.tax_id, '') ILIKE '%' || v_q || '%'
+            OR coalesce(s.phone, '') ILIKE '%' || v_q || '%'
+        )
+        AND (
+            NOT p_with_debt_only
+            OR (sc.is_active = true AND sc.current_debt > 0)
+        )
+    ),
+    paged AS (
+        SELECT
+            f.*,
+            COUNT(*) OVER() AS total_count
+        FROM filtered f
+        ORDER BY f.current_debt DESC, f.id ASC
+        LIMIT v_limit
+        OFFSET v_offset
+    )
+    SELECT
+        coalesce(
+            jsonb_agg(
+                jsonb_build_object(
+                    'id', p.id,
+                    'supplier_id', p.supplier_id,
+                    'credit_limit', p.credit_limit,
+                    'current_debt', p.current_debt,
+                    'is_active', p.is_active,
+                    'supplier_name', p.supplier_name,
+                    'supplier_tax_id', p.supplier_tax_id,
+                    'supplier_phone', p.supplier_phone
+                )
+            ),
+            '[]'::jsonb
+        ),
+        coalesce(MAX(p.total_count), 0)
+    INTO v_items, v_total_count
+    FROM paged p;
+
+    -- Si offset cayó fuera de rango tras un filtro o borrado, obtener total real
+    IF v_total_count = 0 AND v_offset > 0 THEN
+        SELECT COUNT(*)
+        INTO v_total_count
+        FROM public.supplier_credits sc
+        INNER JOIN public.suppliers s ON s.id = sc.supplier_id
+        WHERE (
+            v_q = ''
+            OR s.name ILIKE '%' || v_q || '%'
+            OR coalesce(s.tax_id, '') ILIKE '%' || v_q || '%'
+            OR coalesce(s.phone, '') ILIKE '%' || v_q || '%'
+        )
+        AND (
+            NOT p_with_debt_only
+            OR (sc.is_active = true AND sc.current_debt > 0)
+        );
+    END IF;
+
+    IF p_include_stats THEN
+        SELECT jsonb_build_object(
+            'totalDebt', coalesce(SUM(sc.current_debt), 0),
+            'activeAccounts', COUNT(*) FILTER (WHERE sc.is_active = true),
+            'suspendedAccounts', COUNT(*) FILTER (WHERE sc.is_active = false),
+            'maxedOutAccounts', COUNT(*) FILTER (
+                WHERE sc.is_active = true
+                  AND sc.current_debt >= sc.credit_limit
+                  AND sc.credit_limit > 0
+            ),
+            'debtCount', COUNT(*) FILTER (WHERE sc.is_active = true AND sc.current_debt > 0)
+        )
+        INTO v_stats
+        FROM public.supplier_credits sc
+        INNER JOIN public.suppliers s ON s.id = sc.supplier_id
+        WHERE v_q = ''
+           OR s.name ILIKE '%' || v_q || '%'
+           OR coalesce(s.tax_id, '') ILIKE '%' || v_q || '%'
+           OR coalesce(s.phone, '') ILIKE '%' || v_q || '%';
+    END IF;
+
+    RETURN jsonb_build_object(
+        'items', v_items,
+        'totalCount', v_total_count,
+        'stats', v_stats
+    );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_supplier_credits_page_rpc"("p_search_query" "text", "p_with_debt_only" boolean, "p_limit" integer, "p_offset" integer, "p_include_stats" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text" DEFAULT ''::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_q text := trim(coalesce(p_search_query, ''));
+    v_result jsonb;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('purchases.view'::text)
+        OR public.user_has_permission('reports.financial'::text)
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para ver estadísticas de créditos.' USING ERRCODE = '42501';
+    END IF;
+
+    SELECT jsonb_build_object(
+        'totalDebt', coalesce(SUM(sc.current_debt), 0),
+        'activeAccounts', COUNT(*) FILTER (WHERE sc.is_active = true),
+        'suspendedAccounts', COUNT(*) FILTER (WHERE sc.is_active = false),
+        'maxedOutAccounts', COUNT(*) FILTER (
+            WHERE sc.is_active = true
+              AND sc.current_debt >= sc.credit_limit
+              AND sc.credit_limit > 0
+        ),
+        'debtCount', COUNT(*) FILTER (WHERE sc.is_active = true AND sc.current_debt > 0)
+    )
+    INTO v_result
+    FROM public.supplier_credits sc
+    INNER JOIN public.suppliers s ON s.id = sc.supplier_id
+    WHERE v_q = ''
+       OR s.name ILIKE '%' || v_q || '%'
+       OR coalesce(s.tax_id, '') ILIKE '%' || v_q || '%'
+       OR coalesce(s.phone, '') ILIKE '%' || v_q || '%';
+
+    RETURN v_result;
 END;
 $$;
 
 
 ALTER FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_suppliers_page_rpc"("p_search_query" "text" DEFAULT ''::"text", "p_is_active" boolean DEFAULT NULL::boolean, "p_limit" integer DEFAULT 15, "p_offset" integer DEFAULT 0, "p_include_stats" boolean DEFAULT true) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_q text := trim(coalesce(p_search_query, ''));
+    v_limit integer := LEAST(GREATEST(coalesce(p_limit, 15), 1), 100);
+    v_offset integer := GREATEST(coalesce(p_offset, 0), 0);
+    v_items jsonb := '[]'::jsonb;
+    v_total_count bigint := 0;
+    v_stats jsonb := NULL;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('suppliers.view'::text)
+        OR public.user_has_permission('suppliers.manage'::text)
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para ver proveedores.' USING ERRCODE = '42501';
+    END IF;
+
+    WITH filtered AS (
+        SELECT
+            s.id,
+            s.name,
+            s.tax_id,
+            s.contact_name,
+            s.phone,
+            s.email,
+            s.address,
+            s.is_active,
+            s.created_at
+        FROM public.suppliers s
+        WHERE (
+            v_q = ''
+            OR s.name ILIKE '%' || v_q || '%'
+            OR coalesce(s.tax_id, '') ILIKE '%' || v_q || '%'
+            OR coalesce(s.contact_name, '') ILIKE '%' || v_q || '%'
+            OR coalesce(s.phone, '') ILIKE '%' || v_q || '%'
+        )
+        AND (p_is_active IS NULL OR s.is_active = p_is_active)
+    ),
+    paged AS (
+        SELECT
+            f.*,
+            COUNT(*) OVER() AS total_count
+        FROM filtered f
+        ORDER BY f.name ASC, f.id ASC
+        LIMIT v_limit
+        OFFSET v_offset
+    )
+    SELECT
+        coalesce(
+            jsonb_agg(
+                jsonb_build_object(
+                    'id', p.id,
+                    'name', p.name,
+                    'tax_id', p.tax_id,
+                    'contact_name', p.contact_name,
+                    'phone', p.phone,
+                    'email', p.email,
+                    'address', p.address,
+                    'is_active', p.is_active,
+                    'created_at', p.created_at
+                )
+            ),
+            '[]'::jsonb
+        ),
+        coalesce(MAX(p.total_count), 0)
+    INTO v_items, v_total_count
+    FROM paged p;
+
+    IF v_total_count = 0 AND v_offset > 0 THEN
+        SELECT COUNT(*)
+        INTO v_total_count
+        FROM public.suppliers s
+        WHERE (
+            v_q = ''
+            OR s.name ILIKE '%' || v_q || '%'
+            OR coalesce(s.tax_id, '') ILIKE '%' || v_q || '%'
+            OR coalesce(s.contact_name, '') ILIKE '%' || v_q || '%'
+            OR coalesce(s.phone, '') ILIKE '%' || v_q || '%'
+        )
+        AND (p_is_active IS NULL OR s.is_active = p_is_active);
+    END IF;
+
+    IF p_include_stats THEN
+        SELECT jsonb_build_object(
+            'totalSuppliers', COUNT(*),
+            'activeSuppliers', COUNT(*) FILTER (WHERE s.is_active = true),
+            'inactiveSuppliers', COUNT(*) FILTER (WHERE s.is_active = false),
+            'withTaxIdCount', COUNT(*) FILTER (WHERE s.tax_id IS NOT NULL AND trim(s.tax_id) <> '')
+        )
+        INTO v_stats
+        FROM public.suppliers s
+        WHERE v_q = ''
+           OR s.name ILIKE '%' || v_q || '%'
+           OR coalesce(s.tax_id, '') ILIKE '%' || v_q || '%'
+           OR coalesce(s.contact_name, '') ILIKE '%' || v_q || '%'
+           OR coalesce(s.phone, '') ILIKE '%' || v_q || '%';
+    END IF;
+
+    RETURN jsonb_build_object(
+        'items', v_items,
+        'totalCount', v_total_count,
+        'stats', v_stats
+    );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_suppliers_page_rpc"("p_search_query" "text", "p_is_active" boolean, "p_limit" integer, "p_offset" integer, "p_include_stats" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_top_customers"("p_limit" integer DEFAULT 10) RETURNS TABLE("id" "uuid", "full_name" "text", "avatar_url" "text", "is_active" boolean, "wallet_balance" integer, "created_at" timestamp with time zone, "total_revenue" numeric)
@@ -2023,37 +2618,74 @@ $$;
 ALTER FUNCTION "public"."get_top_customers"("p_limit" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_top_customers_rpc"("p_limit" integer DEFAULT 5) RETURNS TABLE("id" "uuid", "full_name" "text", "phone" "text", "document_number" "text", "document_type" "text", "avatar_url" "text", "wallet_balance" numeric, "is_active" boolean, "created_at" timestamp with time zone, "total_revenue" numeric, "order_count" bigint)
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_top_customers_rpc"("p_limit" integer DEFAULT 5, "p_start_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_end_date" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS TABLE("id" "uuid", "full_name" "text", "phone" "text", "document_number" "text", "document_type" "text", "avatar_url" "text", "wallet_balance" numeric, "is_active" boolean, "created_at" timestamp with time zone, "total_revenue" numeric, "order_count" bigint, "last_order_at" timestamp with time zone, "current_debt" numeric, "credit_limit" numeric)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
     AS $$
-    SELECT 
-        p.id,
-        p.full_name,
-        p.phone,
-        p.document_number,
-        p.document_type,
-        p.avatar_url,
-        p.wallet_balance::numeric,
-        p.is_active,
-        p.created_at,
-        COALESCE(SUM(o.total_amount), 0) AS total_revenue,
-        COUNT(o.id) AS order_count
-    FROM public.profiles p
-    JOIN public.orders o ON o.customer_id = p.id
-    WHERE o.status = 'COMPLETED'
-      AND NOT EXISTS (
-        SELECT 1 FROM public.user_roles ur
-        JOIN public.roles ro ON ro.id = ur.role_id
-        WHERE ur.profile_id = p.id AND ro.name IN ('admin', 'employee')
+DECLARE
+    v_limit integer := LEAST(GREATEST(coalesce(p_limit, 5), 1), 100);
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('customers.read'::text)
+        OR public.user_has_permission('customers.manage'::text)
+        OR public.user_has_permission('pos.sale'::text)
+        OR public.user_has_permission('orders.read'::text)
+        OR public.user_has_permission('reports.financial'::text)
+        OR public.is_admin()
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para consultar el ranking de clientes.' USING ERRCODE = '42501';
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        c.id,
+        c.full_name,
+        c.phone,
+        c.document_number,
+        c.document_type,
+        c.avatar_url,
+        c.wallet_balance::numeric,
+        c.is_active,
+        c.created_at,
+        COALESCE(SUM(o.total_amount), 0)::numeric AS total_revenue,
+        COUNT(o.id)::bigint AS order_count,
+        MAX(o.created_at) AS last_order_at,
+        COALESCE(MAX(cc.current_debt), 0)::numeric AS current_debt,
+        COALESCE(MAX(cc.credit_limit), 0)::numeric AS credit_limit
+    FROM public.customers c
+    JOIN public.orders o
+      ON o.status = 'COMPLETED'
+     AND (
+         o.customer_record_id = c.id
+         OR (c.profile_id IS NOT NULL AND o.customer_id = c.profile_id)
+     )
+    LEFT JOIN public.customer_credits cc
+      ON cc.customer_record_id = c.id
+         OR (c.profile_id IS NOT NULL AND cc.profile_id = c.profile_id)
+    WHERE (p_start_date IS NULL OR o.created_at >= p_start_date)
+      AND (p_end_date IS NULL OR o.created_at <= p_end_date)
+      AND (
+          c.profile_id IS NULL
+          OR NOT EXISTS (
+              SELECT 1
+              FROM public.user_roles ur
+              JOIN public.roles ro ON ro.id = ur.role_id
+              WHERE ur.profile_id = c.profile_id
+                AND ro.name IN ('admin', 'employee')
+          )
       )
-    GROUP BY p.id
-    ORDER BY total_revenue DESC
-    LIMIT p_limit;
+    GROUP BY c.id
+    ORDER BY total_revenue DESC, order_count DESC
+    LIMIT v_limit;
+END;
 $$;
 
 
-ALTER FUNCTION "public"."get_top_customers_rpc"("p_limit" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."get_top_customers_rpc"("p_limit" integer, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_user_relations_summary"("p_user_id" "uuid") RETURNS "jsonb"
@@ -3586,7 +4218,7 @@ $$;
 ALTER FUNCTION "public"."reconcile_balances_report"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid" DEFAULT NULL::"uuid", "p_notes" "text" DEFAULT 'Abono registrado a crédito'::"text", "p_shift_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid" DEFAULT NULL::"uuid", "p_notes" "text" DEFAULT 'Abono registrado a crédito'::"text", "p_shift_id" "uuid" DEFAULT NULL::"uuid", "p_idempotency_key" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
     AS $$
@@ -3606,11 +4238,40 @@ DECLARE
     v_created_by       UUID;
     v_customer_record_id UUID;
     v_customer_profile_id UUID;
+    v_existing_resp    JSONB;
+    v_result           JSONB;
 BEGIN
+    IF auth.uid() IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No autenticado.', 'detail', '42501');
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('credits.manage'::text)
+        OR public.user_has_permission('pos.sale'::text)
+        OR public.is_admin()
+    ) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No tienes permisos para registrar abonos de crédito.', 'detail', '42501');
+    END IF;
+
+    -- 1. Verificación idempotente antes de mutar cualquier registro
+    IF p_idempotency_key IS NOT NULL THEN
+        SELECT response INTO v_existing_resp
+        FROM public.customer_credit_payment_idempotency
+        WHERE idempotency_key = p_idempotency_key;
+
+        IF FOUND THEN
+            RETURN v_existing_resp;
+        END IF;
+    END IF;
+
     v_now := NOW() AT TIME ZONE 'America/Lima';
 
-    IF p_amount <= 0 THEN
-        RAISE EXCEPTION 'El monto debe ser mayor a 0.';
+    IF p_amount IS NULL OR p_amount <= 0 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'El monto debe ser mayor a 0.', 'detail', 'P0001');
+    END IF;
+
+    IF p_credit_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Identificador de línea de crédito obligatorio.', 'detail', 'P0001');
     END IF;
 
     SELECT id INTO v_created_by
@@ -3618,38 +4279,64 @@ BEGIN
      WHERE auth_user_id = auth.uid() OR id = auth.uid()
      LIMIT 1;
 
-    -- Resolver cliente (p_customer_id puede llegar como customers.id o profiles.id)
-    SELECT id, profile_id INTO v_customer_record_id, v_customer_profile_id
-      FROM public.customers
-     WHERE id = p_customer_id OR profile_id = p_customer_id
-     LIMIT 1;
+    -- 2. Lock pesimista TEMPRANO sobre customer_credits (previene race conditions multi-caja)
+    SELECT current_debt, customer_record_id, profile_id
+      INTO v_current_debt, v_customer_record_id, v_customer_profile_id
+      FROM public.customer_credits
+     WHERE id = p_credit_id
+     FOR UPDATE;
 
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Línea de crédito no encontrada.', 'detail', 'P0002');
+    END IF;
+
+    IF p_amount > v_current_debt THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'El monto (S/ ' || p_amount || ') sobrepasa la deuda pendiente (S/ ' || v_current_debt || ').',
+            'detail', 'P0001'
+        );
+    END IF;
+
+    -- Resolver cliente si faltase en customer_credits
     IF v_customer_record_id IS NULL THEN
+        SELECT id, coalesce(v_customer_profile_id, profile_id)
+          INTO v_customer_record_id, v_customer_profile_id
+          FROM public.customers
+         WHERE id = p_customer_id OR profile_id = p_customer_id
+         LIMIT 1;
+    END IF;
+
+    IF v_customer_record_id IS NULL AND v_customer_profile_id IS NULL THEN
         v_customer_profile_id := p_customer_id;
     END IF;
 
+    -- 3. Lock pesimista sobre financial_accounts y validación de turno de caja
     SELECT type, name INTO v_account
       FROM public.financial_accounts
-     WHERE id = p_account_id;
+     WHERE id = p_account_id
+     FOR UPDATE;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'Cuenta financiera no encontrada.';
+        RETURN jsonb_build_object('success', false, 'error', 'Cuenta financiera no encontrada.', 'detail', 'P0002');
     END IF;
 
     IF v_account.type = 'CAJA' THEN
         IF p_shift_id IS NULL THEN
-            RAISE EXCEPTION 'El pago es por Caja pero no se proporcionó un turno de caja (shift_id).';
+            RETURN jsonb_build_object('success', false, 'error', 'El pago es por Caja pero no se proporcionó un turno de caja.', 'detail', 'P0001');
         END IF;
 
         SELECT status INTO v_shift_status
-        FROM public.cash_shifts
-        WHERE id = p_shift_id;
+          FROM public.cash_shifts
+         WHERE id = p_shift_id
+         FOR UPDATE;
 
         IF NOT FOUND OR v_shift_status != 'OPEN' THEN
-            RAISE EXCEPTION 'El turno de caja está cerrado o no existe. No se puede recibir el pago.';
+            RETURN jsonb_build_object('success', false, 'error', 'El turno de caja está cerrado o no existe.', 'detail', 'P0001');
         END IF;
     END IF;
 
+    -- 4. Aplicar abono FIFO a órdenes pendientes con FOR UPDATE
     FOR v_order IN
         SELECT id, total_amount, amount_paid, payment_status
           FROM public.orders
@@ -3685,15 +4372,13 @@ BEGIN
                updated_at    = v_now
          WHERE id = v_order.id;
 
-        IF v_to_apply > 0 AND p_credit_id IS NOT NULL THEN
+        IF v_to_apply > 0 THEN
             INSERT INTO public.customer_credit_movements (
                 customer_credit_id, order_id, movement_type, amount, payment_method, notes, created_by, created_at
             ) VALUES (
                 p_credit_id, v_order.id, 'PAYMENT', v_to_apply, v_account.name, p_notes, v_created_by, v_now
             );
-        END IF;
 
-        IF v_to_apply > 0 THEN
             INSERT INTO public.account_movements (
                 account_id, movement_type, amount, description, reference_type, reference_id, shift_id, created_by, created_at
             ) VALUES (
@@ -3742,38 +4427,33 @@ BEGIN
            SET balance = balance + v_remaining
          WHERE id = p_account_id;
 
-        IF p_credit_id IS NOT NULL THEN
-            INSERT INTO public.customer_credit_movements (
-                customer_credit_id, order_id, movement_type, amount, payment_method, notes, created_by, created_at
-            ) VALUES (
-                p_credit_id, NULL, 'PAYMENT', v_remaining, v_account.name, p_notes, v_created_by, v_now
-            );
-        END IF;
+        INSERT INTO public.customer_credit_movements (
+            customer_credit_id, order_id, movement_type, amount, payment_method, notes, created_by, created_at
+        ) VALUES (
+            p_credit_id, NULL, 'PAYMENT', v_remaining, v_account.name, p_notes, v_created_by, v_now
+        );
     END IF;
 
-    IF p_credit_id IS NOT NULL THEN
-        SELECT current_debt INTO v_current_debt
-          FROM public.customer_credits
-         WHERE id = p_credit_id
-         FOR UPDATE;
+    v_new_debt := GREATEST(0, v_current_debt - p_amount);
 
-        IF v_current_debt IS NOT NULL THEN
-            IF p_amount > v_current_debt THEN
-               RAISE EXCEPTION 'El monto (S/%) sobrepasa la deuda pendiente (S/%)', p_amount, v_current_debt;
-            END IF;
-            v_new_debt := GREATEST(0, v_current_debt - p_amount);
+    UPDATE public.customer_credits
+       SET current_debt = v_new_debt,
+           updated_at   = v_now
+     WHERE id = p_credit_id;
 
-            UPDATE public.customer_credits
-               SET current_debt = v_new_debt,
-                   updated_at   = v_now
-             WHERE id = p_credit_id;
-        END IF;
-    END IF;
-
-    RETURN jsonb_build_object(
+    v_result := jsonb_build_object(
         'success', true,
-        'amount_paid', p_amount
+        'amount_paid', p_amount,
+        'new_debt', v_new_debt
     );
+
+    IF p_idempotency_key IS NOT NULL THEN
+        INSERT INTO public.customer_credit_payment_idempotency (idempotency_key, credit_id, response)
+        VALUES (p_idempotency_key, p_credit_id, v_result)
+        ON CONFLICT (idempotency_key) DO NOTHING;
+    END IF;
+
+    RETURN v_result;
 
 EXCEPTION
     WHEN OTHERS THEN
@@ -3786,7 +4466,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_idempotency_key" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."register_financial_movement"("p_account_id" "uuid", "p_movement_type" "text", "p_amount" numeric, "p_description" "text", "p_reference_type" "text", "p_reference_id" "uuid", "p_created_by" "uuid") RETURNS "void"
@@ -3978,6 +4658,277 @@ $$;
 ALTER FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid" DEFAULT NULL::"uuid", "p_notes" "text" DEFAULT 'Pago a proveedor registrado'::"text", "p_shift_id" "uuid" DEFAULT NULL::"uuid", "p_profile_id" "uuid" DEFAULT NULL::"uuid", "p_idempotency_key" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_remaining        numeric := p_amount;
+    v_order            record;
+    v_pending_of_order numeric;
+    v_to_apply         numeric;
+    v_new_paid         numeric;
+    v_new_status       text;
+    v_account          record;
+    v_shift            record;
+    v_credit           record;
+    v_now              timestamptz := NOW();
+    v_real_profile_id  uuid;
+    v_credit_id        uuid := p_credit_id;
+    v_updated_credit   jsonb := NULL;
+    v_existing_mov     uuid;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No autenticado.');
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('purchases.create'::text)
+        OR public.user_has_permission('financial.movements.create'::text)
+    ) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No tienes permisos para registrar pagos a proveedores.');
+    END IF;
+
+    IF p_amount IS NULL OR p_amount <= 0 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'El monto debe ser mayor a 0.');
+    END IF;
+
+    IF p_account_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Debes seleccionar una cuenta financiera de salida.');
+    END IF;
+
+    -- Idempotencia ante reintentos por red lenta
+    IF p_idempotency_key IS NOT NULL THEN
+        SELECT id INTO v_existing_mov
+        FROM public.supplier_credit_movements
+        WHERE idempotency_key = p_idempotency_key
+        LIMIT 1;
+
+        IF v_existing_mov IS NOT NULL THEN
+            IF v_credit_id IS NOT NULL THEN
+                SELECT jsonb_build_object(
+                    'id', sc.id,
+                    'supplier_id', sc.supplier_id,
+                    'credit_limit', sc.credit_limit,
+                    'current_debt', sc.current_debt,
+                    'is_active', sc.is_active,
+                    'supplier_name', s.name,
+                    'supplier_tax_id', s.tax_id,
+                    'supplier_phone', s.phone
+                )
+                INTO v_updated_credit
+                FROM public.supplier_credits sc
+                INNER JOIN public.suppliers s ON s.id = sc.supplier_id
+                WHERE sc.id = v_credit_id;
+            END IF;
+
+            RETURN jsonb_build_object(
+                'success', true,
+                'idempotent', true,
+                'amount_paid', p_amount,
+                'updated_credit', v_updated_credit
+            );
+        END IF;
+    END IF;
+
+    -- Resolver perfil del operador autenticado
+    SELECT id INTO v_real_profile_id
+    FROM public.profiles
+    WHERE auth_user_id = auth.uid()
+    LIMIT 1;
+
+    IF v_real_profile_id IS NULL AND p_profile_id IS NOT NULL THEN
+        SELECT id INTO v_real_profile_id
+        FROM public.profiles
+        WHERE auth_user_id = p_profile_id OR id = p_profile_id
+        LIMIT 1;
+    END IF;
+
+    -- Orden determinista de bloqueo FOR UPDATE:
+    -- 1) financial_accounts
+    SELECT id, name, type, balance, is_active
+    INTO v_account
+    FROM public.financial_accounts
+    WHERE id = p_account_id
+    FOR UPDATE;
+
+    IF NOT FOUND OR NOT v_account.is_active THEN
+        RETURN jsonb_build_object('success', false, 'error', 'La cuenta financiera seleccionada no existe o está inactiva.');
+    END IF;
+
+    IF v_account.balance < p_amount THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Saldo insuficiente en ' || v_account.name || ' (disponible: S/ ' || round(v_account.balance, 2) || ').'
+        );
+    END IF;
+
+    -- 2) cash_shifts si la cuenta es CAJA
+    IF v_account.type = 'CAJA' THEN
+        IF p_shift_id IS NULL THEN
+            RETURN jsonb_build_object('success', false, 'error', 'La cuenta CAJA requiere un turno de caja abierto.');
+        END IF;
+
+        SELECT id, status
+        INTO v_shift
+        FROM public.cash_shifts
+        WHERE id = p_shift_id
+          AND account_id = p_account_id
+          AND status = 'OPEN'
+        FOR UPDATE;
+
+        IF NOT FOUND THEN
+            RETURN jsonb_build_object('success', false, 'error', 'El turno de caja seleccionado no está abierto o no pertenece a esta caja.');
+        END IF;
+    END IF;
+
+    -- 3) supplier_credits
+    IF v_credit_id IS NULL AND p_supplier_id IS NOT NULL THEN
+        SELECT id INTO v_credit_id
+        FROM public.supplier_credits
+        WHERE supplier_id = p_supplier_id
+        LIMIT 1;
+    END IF;
+
+    IF v_credit_id IS NOT NULL THEN
+        SELECT id, current_debt, is_active
+        INTO v_credit
+        FROM public.supplier_credits
+        WHERE id = v_credit_id
+        FOR UPDATE;
+
+        IF NOT FOUND THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Línea de crédito de proveedor no encontrada.');
+        END IF;
+
+        IF NOT v_credit.is_active THEN
+            RETURN jsonb_build_object('success', false, 'error', 'La línea de crédito está suspendida.');
+        END IF;
+
+        IF p_amount > v_credit.current_debt THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error', 'El monto supera la deuda actual del proveedor (S/ ' || round(v_credit.current_debt, 2) || ').'
+            );
+        END IF;
+    END IF;
+
+    -- 4) purchase_orders bloqueadas en orden determinista
+    FOR v_order IN
+        SELECT id, total_amount, amount_paid, payment_status, status
+        FROM public.purchase_orders
+        WHERE supplier_id = p_supplier_id
+          AND (p_order_id IS NULL OR id = p_order_id)
+          AND payment_status IN ('PENDING', 'PARTIAL')
+          AND status <> 'CANCELLED'
+        ORDER BY created_at ASC, id ASC
+        FOR UPDATE
+    LOOP
+        EXIT WHEN v_remaining <= 0;
+
+        v_pending_of_order := GREATEST(0, v_order.total_amount - v_order.amount_paid);
+        IF v_pending_of_order <= 0 THEN
+            CONTINUE;
+        END IF;
+
+        v_to_apply   := LEAST(v_remaining, v_pending_of_order);
+        v_new_paid   := v_order.amount_paid + v_to_apply;
+        v_remaining  := v_remaining - v_to_apply;
+        v_new_status := CASE WHEN v_new_paid >= v_order.total_amount THEN 'PAID' ELSE 'PARTIAL' END;
+
+        IF p_order_id IS NOT NULL AND p_amount > v_pending_of_order THEN
+            RAISE EXCEPTION 'El monto supera la deuda pendiente del pedido (S/ %)', round(v_pending_of_order, 2);
+        END IF;
+
+        UPDATE public.purchase_orders
+        SET amount_paid    = v_new_paid,
+            payment_status = v_new_status,
+            status         = CASE WHEN status = 'PENDING' THEN 'SENT' ELSE status END,
+            updated_at     = v_now
+        WHERE id = v_order.id;
+
+        IF v_to_apply > 0 THEN
+            INSERT INTO public.account_movements (
+                account_id, movement_type, amount, description,
+                reference_type, reference_id, shift_id,
+                created_by, created_at
+            ) VALUES (
+                p_account_id, 'EXPENSE', v_to_apply,
+                'Pago a proveedor — Orden #' || UPPER(SUBSTRING(v_order.id::text, 1, 8)),
+                'purchase_orders', v_order.id, p_shift_id,
+                v_real_profile_id, v_now
+            );
+        END IF;
+    END LOOP;
+
+    -- Si se especificó una orden específica pero ya no tenía saldo pendiente
+    IF p_order_id IS NOT NULL AND v_remaining = p_amount THEN
+        RAISE EXCEPTION 'El pedido seleccionado no tiene deuda pendiente o fue cancelado.';
+    END IF;
+
+    -- Cierre de brecha contable: si hubo remanente aplicado a deuda general sin órdenes pendientes
+    IF v_remaining > 0 THEN
+        INSERT INTO public.account_movements (
+            account_id, movement_type, amount, description,
+            reference_type, reference_id, shift_id,
+            created_by, created_at
+        ) VALUES (
+            p_account_id, 'EXPENSE', v_remaining,
+            coalesce(NULLIF(trim(p_notes), ''), 'Pago a deuda general de proveedor'),
+            'supplier_credits', coalesce(v_credit_id, p_supplier_id), p_shift_id,
+            v_real_profile_id, v_now
+        );
+    END IF;
+
+    IF v_credit_id IS NOT NULL THEN
+        INSERT INTO public.supplier_credit_movements (
+            supplier_credit_id, purchase_order_id, movement_type,
+            amount, payment_method, notes, created_by, created_at, idempotency_key
+        ) VALUES (
+            v_credit_id, p_order_id, 'PAYMENT',
+            p_amount, v_account.name, p_notes, v_real_profile_id, v_now, p_idempotency_key
+        );
+
+        UPDATE public.supplier_credits
+        SET current_debt = GREATEST(0, current_debt - p_amount),
+            updated_at   = v_now
+        WHERE id = v_credit_id;
+
+        SELECT jsonb_build_object(
+            'id', sc.id,
+            'supplier_id', sc.supplier_id,
+            'credit_limit', sc.credit_limit,
+            'current_debt', sc.current_debt,
+            'is_active', sc.is_active,
+            'supplier_name', s.name,
+            'supplier_tax_id', s.tax_id,
+            'supplier_phone', s.phone
+        )
+        INTO v_updated_credit
+        FROM public.supplier_credits sc
+        INNER JOIN public.suppliers s ON s.id = sc.supplier_id
+        WHERE sc.id = v_credit_id;
+    END IF;
+
+    UPDATE public.financial_accounts
+    SET balance    = balance - p_amount,
+        updated_at = v_now
+    WHERE id = p_account_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'amount_paid', p_amount,
+        'updated_credit', v_updated_credit
+    );
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM, 'detail', SQLSTATE);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid", "p_idempotency_key" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."rpc_adjust_financial_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_reason" "text" DEFAULT 'Ajuste manual de saldo desde formulario'::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -4102,6 +5053,76 @@ $$;
 
 
 ALTER FUNCTION "public"."rpc_adjust_wallet"("p_user_id" "uuid", "p_amount" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_bulk_toggle_suppliers_status"("p_supplier_ids" "uuid"[]) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_count integer;
+    v_updated jsonb := '[]'::jsonb;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No autenticado.', 'detail', '42501');
+    END IF;
+
+    IF NOT public.user_has_permission('suppliers.manage'::text) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No tienes permisos para modificar proveedores.', 'detail', '42501');
+    END IF;
+
+    v_count := coalesce(array_length(p_supplier_ids, 1), 0);
+    IF v_count = 0 OR v_count > 100 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Cantidad inválida de proveedores seleccionados (1–100).', 'detail', 'P0001');
+    END IF;
+
+    -- Bloqueo ordenado por id para prevenir deadlocks
+    PERFORM id
+    FROM public.suppliers
+    WHERE id = ANY(p_supplier_ids)
+    ORDER BY id ASC
+    FOR UPDATE;
+
+    WITH updated AS (
+        UPDATE public.suppliers
+        SET is_active  = NOT is_active,
+            updated_at = NOW()
+        WHERE id = ANY(p_supplier_ids)
+        RETURNING id, name, tax_id, contact_name, phone, email, address, is_active, created_at
+    )
+    SELECT
+        coalesce(
+            jsonb_agg(
+                jsonb_build_object(
+                    'id', u.id,
+                    'name', u.name,
+                    'tax_id', u.tax_id,
+                    'contact_name', u.contact_name,
+                    'phone', u.phone,
+                    'email', u.email,
+                    'address', u.address,
+                    'is_active', u.is_active,
+                    'created_at', u.created_at
+                )
+            ),
+            '[]'::jsonb
+        ),
+        COUNT(*)
+    INTO v_updated, v_count
+    FROM updated u;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'updatedCount', v_count,
+        'updatedSuppliers', v_updated
+    );
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM, 'detail', SQLSTATE);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_bulk_toggle_suppliers_status"("p_supplier_ids" "uuid"[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."rpc_cancel_order"("payload" "jsonb") RETURNS "jsonb"
@@ -4639,6 +5660,131 @@ $$;
 ALTER FUNCTION "public"."rpc_convert_quotation_to_order"("p_quotation_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."rpc_create_customer_credit"("p_customer_id" "uuid", "p_credit_limit" numeric) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_actor_id uuid;
+    v_cust public.customers%ROWTYPE;
+    v_existing public.customer_credits%ROWTYPE;
+    v_credit_id uuid;
+    v_limit numeric(14,2) := coalesce(p_credit_limit, 0.00);
+    v_profile_name text;
+    v_profile_doc text;
+    v_profile_doc_type text;
+    v_profile_phone text;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('credits.manage'::text)
+        OR public.is_admin()
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para aprobar líneas de crédito.' USING ERRCODE = '42501';
+    END IF;
+
+    IF v_limit < 0 THEN
+        RAISE EXCEPTION 'El límite de crédito no puede ser negativo.' USING ERRCODE = 'P0001';
+    END IF;
+
+    SELECT id INTO v_actor_id
+    FROM public.profiles
+    WHERE auth_user_id = auth.uid()
+    LIMIT 1;
+
+    SELECT * INTO v_cust
+    FROM public.customers
+    WHERE id = p_customer_id OR profile_id = p_customer_id
+    ORDER BY (id = p_customer_id) DESC
+    LIMIT 1;
+
+    IF v_cust.id IS NULL THEN
+        SELECT full_name, document_number, document_type, phone
+        INTO v_profile_name, v_profile_doc, v_profile_doc_type, v_profile_phone
+        FROM public.profiles
+        WHERE id = p_customer_id
+        LIMIT 1;
+
+        IF v_profile_name IS NULL THEN
+            RAISE EXCEPTION 'Cliente no encontrado.' USING ERRCODE = 'P0002';
+        END IF;
+    END IF;
+
+    SELECT * INTO v_existing
+    FROM public.customer_credits cc
+    WHERE (v_cust.id IS NOT NULL AND cc.customer_record_id = v_cust.id)
+       OR (v_cust.profile_id IS NOT NULL AND cc.profile_id = v_cust.profile_id)
+       OR cc.profile_id = p_customer_id
+    LIMIT 1
+    FOR UPDATE;
+
+    IF v_existing.id IS NOT NULL THEN
+        IF v_limit > 0 AND v_limit < v_existing.current_debt THEN
+            RAISE EXCEPTION 'El límite de crédito (S/ %) no puede ser menor a la deuda actual (S/ %).', v_limit, v_existing.current_debt
+                USING ERRCODE = 'P0001';
+        END IF;
+
+        UPDATE public.customer_credits
+        SET
+            customer_record_id = coalesce(customer_record_id, v_cust.id),
+            profile_id = coalesce(profile_id, v_cust.profile_id),
+            credit_limit = v_limit,
+            is_active = true,
+            updated_at = now()
+        WHERE id = v_existing.id
+        RETURNING * INTO v_existing;
+
+        v_credit_id := v_existing.id;
+    ELSE
+        INSERT INTO public.customer_credits (
+            customer_record_id,
+            profile_id,
+            credit_limit,
+            current_debt,
+            is_active,
+            created_by,
+            updated_at
+        ) VALUES (
+            v_cust.id,
+            coalesce(v_cust.profile_id, CASE WHEN v_cust.id IS NULL THEN p_customer_id ELSE NULL END),
+            v_limit,
+            0.00,
+            true,
+            v_actor_id,
+            now()
+        )
+        RETURNING * INTO v_existing;
+
+        v_credit_id := v_existing.id;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'account', jsonb_build_object(
+            'id', v_existing.id,
+            'customer_record_id', v_existing.customer_record_id,
+            'profile_id', v_existing.profile_id,
+            'credit_limit', v_existing.credit_limit,
+            'current_debt', v_existing.current_debt,
+            'is_active', v_existing.is_active,
+            'created_at', v_existing.created_at,
+            'updated_at', v_existing.updated_at,
+            'customer_name', coalesce(v_cust.full_name, v_profile_name, 'Cliente desconocido'),
+            'customer_document', coalesce(v_cust.document_number, v_profile_doc),
+            'customer_document_type', coalesce(v_cust.document_type, v_profile_doc_type),
+            'customer_phone', coalesce(v_cust.phone, v_profile_phone)
+        )
+    );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_create_customer_credit"("p_customer_id" "uuid", "p_credit_limit" numeric) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."rpc_create_journal_entry"("payload" "jsonb") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
@@ -4702,27 +5848,76 @@ ALTER FUNCTION "public"."rpc_create_journal_entry"("payload" "jsonb") OWNER TO "
 
 CREATE OR REPLACE FUNCTION "public"."rpc_create_supplier_credit"("p_supplier_id" "uuid", "p_credit_limit" numeric) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
     AS $$
 DECLARE
-  v_initial_debt numeric := 0;
-  v_new_credit_id uuid;
+    v_initial_debt numeric := 0;
+    v_new_credit_id uuid;
+    v_profile_id uuid;
+    v_supplier_exists boolean := false;
 BEGIN
-  -- 1. Calcular deuda inicial bloqueando de forma segura
-  SELECT COALESCE(SUM(total_amount - amount_paid), 0)
-  INTO v_initial_debt
-  FROM purchase_orders
-  WHERE supplier_id = p_supplier_id
-    AND payment_status IN ('PENDING', 'PARTIAL')
-    AND status != 'CANCELLED';
+    IF auth.uid() IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No autenticado.');
+    END IF;
 
-  -- 2. Insertar el nuevo crédito
-  INSERT INTO supplier_credits (supplier_id, credit_limit, current_debt, is_active)
-  VALUES (p_supplier_id, p_credit_limit, v_initial_debt, true)
-  RETURNING id INTO v_new_credit_id;
+    IF NOT public.user_has_permission('purchases.create'::text) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No tienes permisos para crear líneas de crédito.');
+    END IF;
 
-  RETURN jsonb_build_object('success', true, 'credit_id', v_new_credit_id);
-EXCEPTION WHEN OTHERS THEN
-  RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+    IF p_credit_limit IS NULL OR p_credit_limit < 0 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'El límite de crédito debe ser mayor o igual a 0.');
+    END IF;
+
+    -- Bloqueo pesimista sobre el proveedor para evitar carreras con compras concurrentes
+    SELECT true INTO v_supplier_exists
+    FROM public.suppliers
+    WHERE id = p_supplier_id
+    FOR UPDATE;
+
+    IF NOT coalesce(v_supplier_exists, false) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Proveedor no encontrado.');
+    END IF;
+
+    SELECT coalesce(SUM(GREATEST(0, total_amount - amount_paid)), 0)
+    INTO v_initial_debt
+    FROM public.purchase_orders
+    WHERE supplier_id = p_supplier_id
+      AND payment_status IN ('PENDING', 'PARTIAL')
+      AND status <> 'CANCELLED';
+
+    IF p_credit_limit < v_initial_debt THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'El límite no puede ser menor a la deuda pendiente actual (S/ ' || round(v_initial_debt, 2) || ').'
+        );
+    END IF;
+
+    SELECT id INTO v_profile_id
+    FROM public.profiles
+    WHERE auth_user_id = auth.uid()
+    LIMIT 1;
+
+    INSERT INTO public.supplier_credits (
+        supplier_id,
+        credit_limit,
+        current_debt,
+        is_active,
+        created_by
+    ) VALUES (
+        p_supplier_id,
+        p_credit_limit,
+        v_initial_debt,
+        true,
+        v_profile_id
+    )
+    RETURNING id INTO v_new_credit_id;
+
+    RETURN jsonb_build_object('success', true, 'credit_id', v_new_credit_id);
+EXCEPTION
+    WHEN unique_violation THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Este proveedor ya cuenta con una línea de crédito registrada.');
+    WHEN OTHERS THEN
+        RETURN jsonb_build_object('success', false, 'error', SQLERRM, 'detail', SQLSTATE);
 END;
 $$;
 
@@ -5409,6 +6604,173 @@ $$;
 ALTER FUNCTION "public"."rpc_resolve_variant_price"("p_variant_id" "uuid", "p_price_list_id" "uuid", "p_unit_code" "text", "p_quantity" numeric) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."rpc_toggle_customer_credit_status"("p_credit_id" "uuid", "p_is_active" boolean) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_row public.customer_credits%ROWTYPE;
+    v_cust public.customers%ROWTYPE;
+    v_profile public.profiles%ROWTYPE;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('credits.manage'::text)
+        OR public.is_admin()
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para suspender o reactivar líneas de crédito.' USING ERRCODE = '42501';
+    END IF;
+
+    SELECT * INTO v_row
+    FROM public.customer_credits
+    WHERE id = p_credit_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Cuenta de crédito no encontrada.' USING ERRCODE = 'P0002';
+    END IF;
+
+    UPDATE public.customer_credits
+    SET
+        is_active = p_is_active,
+        updated_at = now()
+    WHERE id = p_credit_id
+    RETURNING * INTO v_row;
+
+    SELECT * INTO v_cust FROM public.customers WHERE id = v_row.customer_record_id LIMIT 1;
+    IF v_row.profile_id IS NOT NULL THEN
+        SELECT * INTO v_profile FROM public.profiles WHERE id = v_row.profile_id LIMIT 1;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'account', jsonb_build_object(
+            'id', v_row.id,
+            'customer_record_id', v_row.customer_record_id,
+            'profile_id', v_row.profile_id,
+            'credit_limit', v_row.credit_limit,
+            'current_debt', v_row.current_debt,
+            'is_active', v_row.is_active,
+            'created_at', v_row.created_at,
+            'updated_at', v_row.updated_at,
+            'customer_name', coalesce(v_cust.full_name, v_profile.full_name, 'Cliente desconocido'),
+            'customer_document', coalesce(v_cust.document_number, v_profile.document_number),
+            'customer_document_type', coalesce(v_cust.document_type, v_profile.document_type),
+            'customer_phone', coalesce(v_cust.phone, v_profile.phone)
+        )
+    );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_toggle_customer_credit_status"("p_credit_id" "uuid", "p_is_active" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_toggle_supplier_credit_status"("p_credit_id" "uuid", "p_is_active" boolean) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_payload jsonb;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No autenticado.');
+    END IF;
+
+    IF NOT public.user_has_permission('purchases.create'::text) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No tienes permisos para modificar el estado del crédito.');
+    END IF;
+
+    UPDATE public.supplier_credits
+    SET is_active = p_is_active,
+        updated_at = NOW()
+    WHERE id = p_credit_id;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Línea de crédito no encontrada.');
+    END IF;
+
+    SELECT jsonb_build_object(
+        'id', sc.id,
+        'supplier_id', sc.supplier_id,
+        'credit_limit', sc.credit_limit,
+        'current_debt', sc.current_debt,
+        'is_active', sc.is_active,
+        'supplier_name', s.name,
+        'supplier_tax_id', s.tax_id,
+        'supplier_phone', s.phone
+    )
+    INTO v_payload
+    FROM public.supplier_credits sc
+    INNER JOIN public.suppliers s ON s.id = sc.supplier_id
+    WHERE sc.id = p_credit_id;
+
+    RETURN jsonb_build_object('success', true, 'credit', v_payload);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM, 'detail', SQLSTATE);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_toggle_supplier_credit_status"("p_credit_id" "uuid", "p_is_active" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_toggle_supplier_status"("p_supplier_id" "uuid", "p_is_active" boolean) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_row public.suppliers%ROWTYPE;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No autenticado.', 'detail', '42501');
+    END IF;
+
+    IF NOT public.user_has_permission('suppliers.manage'::text) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No tienes permisos para modificar proveedores.', 'detail', '42501');
+    END IF;
+
+    SELECT * INTO v_row
+    FROM public.suppliers
+    WHERE id = p_supplier_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Proveedor no encontrado.', 'detail', 'P0002');
+    END IF;
+
+    UPDATE public.suppliers
+    SET is_active  = p_is_active,
+        updated_at = NOW()
+    WHERE id = p_supplier_id
+    RETURNING * INTO v_row;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'supplier', jsonb_build_object(
+            'id', v_row.id,
+            'name', v_row.name,
+            'tax_id', v_row.tax_id,
+            'contact_name', v_row.contact_name,
+            'phone', v_row.phone,
+            'email', v_row.email,
+            'address', v_row.address,
+            'is_active', v_row.is_active,
+            'created_at', v_row.created_at
+        )
+    );
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM, 'detail', SQLSTATE);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_toggle_supplier_status"("p_supplier_id" "uuid", "p_is_active" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."rpc_transfer_warehouse_stock"("payload" "jsonb") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
@@ -5533,6 +6895,147 @@ $$;
 ALTER FUNCTION "public"."rpc_transfer_warehouse_stock"("payload" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."rpc_update_customer_credit_limit"("p_credit_id" "uuid", "p_credit_limit" numeric) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_row public.customer_credits%ROWTYPE;
+    v_cust public.customers%ROWTYPE;
+    v_profile public.profiles%ROWTYPE;
+    v_limit numeric(14,2) := coalesce(p_credit_limit, 0.00);
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('credits.manage'::text)
+        OR public.is_admin()
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para modificar límites de crédito.' USING ERRCODE = '42501';
+    END IF;
+
+    IF v_limit < 0 THEN
+        RAISE EXCEPTION 'El límite de crédito no puede ser negativo.' USING ERRCODE = 'P0001';
+    END IF;
+
+    SELECT * INTO v_row
+    FROM public.customer_credits
+    WHERE id = p_credit_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Cuenta de crédito no encontrada.' USING ERRCODE = 'P0002';
+    END IF;
+
+    IF v_limit > 0 AND v_limit < v_row.current_debt THEN
+        RAISE EXCEPTION 'El nuevo límite (S/ %) no puede ser menor a la deuda actual (S/ %).', v_limit, v_row.current_debt
+            USING ERRCODE = 'P0001';
+    END IF;
+
+    UPDATE public.customer_credits
+    SET
+        credit_limit = v_limit,
+        updated_at = now()
+    WHERE id = p_credit_id
+    RETURNING * INTO v_row;
+
+    SELECT * INTO v_cust FROM public.customers WHERE id = v_row.customer_record_id LIMIT 1;
+    IF v_row.profile_id IS NOT NULL THEN
+        SELECT * INTO v_profile FROM public.profiles WHERE id = v_row.profile_id LIMIT 1;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'account', jsonb_build_object(
+            'id', v_row.id,
+            'customer_record_id', v_row.customer_record_id,
+            'profile_id', v_row.profile_id,
+            'credit_limit', v_row.credit_limit,
+            'current_debt', v_row.current_debt,
+            'is_active', v_row.is_active,
+            'created_at', v_row.created_at,
+            'updated_at', v_row.updated_at,
+            'customer_name', coalesce(v_cust.full_name, v_profile.full_name, 'Cliente desconocido'),
+            'customer_document', coalesce(v_cust.document_number, v_profile.document_number),
+            'customer_document_type', coalesce(v_cust.document_type, v_profile.document_type),
+            'customer_phone', coalesce(v_cust.phone, v_profile.phone)
+        )
+    );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_update_customer_credit_limit"("p_credit_id" "uuid", "p_credit_limit" numeric) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_update_supplier_credit_limit"("p_credit_id" "uuid", "p_credit_limit" numeric) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_credit record;
+    v_payload jsonb;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No autenticado.');
+    END IF;
+
+    IF NOT public.user_has_permission('purchases.create'::text) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No tienes permisos para editar líneas de crédito.');
+    END IF;
+
+    IF p_credit_limit IS NULL OR p_credit_limit < 0 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'El límite de crédito debe ser mayor o igual a 0.');
+    END IF;
+
+    SELECT * INTO v_credit
+    FROM public.supplier_credits
+    WHERE id = p_credit_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Línea de crédito no encontrada.');
+    END IF;
+
+    IF p_credit_limit < v_credit.current_debt THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'El límite no puede ser menor a la deuda actual (S/ ' || round(v_credit.current_debt, 2) || ').'
+        );
+    END IF;
+
+    UPDATE public.supplier_credits
+    SET credit_limit = p_credit_limit,
+        updated_at = NOW()
+    WHERE id = p_credit_id;
+
+    SELECT jsonb_build_object(
+        'id', sc.id,
+        'supplier_id', sc.supplier_id,
+        'credit_limit', sc.credit_limit,
+        'current_debt', sc.current_debt,
+        'is_active', sc.is_active,
+        'supplier_name', s.name,
+        'supplier_tax_id', s.tax_id,
+        'supplier_phone', s.phone
+    )
+    INTO v_payload
+    FROM public.supplier_credits sc
+    INNER JOIN public.suppliers s ON s.id = sc.supplier_id
+    WHERE sc.id = p_credit_id;
+
+    RETURN jsonb_build_object('success', true, 'credit', v_payload);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM, 'detail', SQLSTATE);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_update_supplier_credit_limit"("p_credit_id" "uuid", "p_credit_limit" numeric) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."rpc_upsert_customer"("payload" "jsonb") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
@@ -5590,6 +7093,86 @@ $$;
 ALTER FUNCTION "public"."rpc_upsert_customer"("payload" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."rpc_upsert_supplier"("p_id" "uuid" DEFAULT NULL::"uuid", "p_name" "text" DEFAULT ''::"text", "p_tax_id" "text" DEFAULT NULL::"text", "p_contact_name" "text" DEFAULT NULL::"text", "p_phone" "text" DEFAULT NULL::"text", "p_email" "text" DEFAULT NULL::"text", "p_address" "text" DEFAULT NULL::"text", "p_is_active" boolean DEFAULT true) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_name text := trim(coalesce(p_name, ''));
+    v_tax_id text := NULLIF(trim(coalesce(p_tax_id, '')), '');
+    v_contact text := NULLIF(trim(coalesce(p_contact_name, '')), '');
+    v_phone text := NULLIF(trim(coalesce(p_phone, '')), '');
+    v_email text := NULLIF(trim(coalesce(p_email, '')), '');
+    v_address text := NULLIF(trim(coalesce(p_address, '')), '');
+    v_row public.suppliers%ROWTYPE;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No autenticado.', 'detail', '42501');
+    END IF;
+
+    IF NOT public.user_has_permission('suppliers.manage'::text) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No tienes permisos para gestionar proveedores.', 'detail', '42501');
+    END IF;
+
+    IF v_name = '' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'El nombre o razón social es obligatorio.', 'detail', 'P0001');
+    END IF;
+
+    IF p_id IS NULL THEN
+        INSERT INTO public.suppliers (
+            name, tax_id, contact_name, phone, email, address, is_active, updated_at
+        ) VALUES (
+            v_name, v_tax_id, v_contact, v_phone, v_email, v_address, coalesce(p_is_active, true), NOW()
+        )
+        RETURNING * INTO v_row;
+    ELSE
+        UPDATE public.suppliers
+        SET name         = v_name,
+            tax_id       = v_tax_id,
+            contact_name = v_contact,
+            phone        = v_phone,
+            email        = v_email,
+            address      = v_address,
+            is_active    = coalesce(p_is_active, is_active),
+            updated_at   = NOW()
+        WHERE id = p_id
+        RETURNING * INTO v_row;
+
+        IF NOT FOUND THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Proveedor no encontrado.', 'detail', 'P0002');
+        END IF;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'supplier', jsonb_build_object(
+            'id', v_row.id,
+            'name', v_row.name,
+            'tax_id', v_row.tax_id,
+            'contact_name', v_row.contact_name,
+            'phone', v_row.phone,
+            'email', v_row.email,
+            'address', v_row.address,
+            'is_active', v_row.is_active,
+            'created_at', v_row.created_at
+        )
+    );
+EXCEPTION
+    WHEN unique_violation THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Ya existe un proveedor con ese número de RUC/ID fiscal.',
+            'detail', '23505'
+        );
+    WHEN OTHERS THEN
+        RETURN jsonb_build_object('success', false, 'error', SQLERRM, 'detail', SQLSTATE);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_upsert_supplier"("p_id" "uuid", "p_name" "text", "p_tax_id" "text", "p_contact_name" "text", "p_phone" "text", "p_email" "text", "p_address" "text", "p_is_active" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."save_customer_full_profile_rpc"("p_customer_id" "uuid" DEFAULT NULL::"uuid", "p_full_name" "text" DEFAULT ''::"text", "p_phone" "text" DEFAULT NULL::"text", "p_document_number" "text" DEFAULT NULL::"text", "p_document_type" "text" DEFAULT 'DNI'::"text", "p_is_active" boolean DEFAULT true, "p_wallet_delta" integer DEFAULT 0, "p_has_credit" boolean DEFAULT true, "p_credit_limit" numeric DEFAULT 0.00) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
@@ -5598,60 +7181,137 @@ DECLARE
     v_actor_id uuid;
     v_cust_id uuid;
     v_profile_id uuid;
+    v_old_wallet integer := 0;
+    v_new_wallet integer := 0;
+    v_actual_delta integer := 0;
+    v_current_debt numeric(14,2) := 0.00;
+    v_clean_name text := NULLIF(trim(coalesce(p_full_name, '')), '');
+    v_clean_phone text := NULLIF(trim(coalesce(p_phone, '')), '');
     v_doc_type text := COALESCE(NULLIF(trim(p_document_type), ''), 'DNI');
     v_doc_num text := NULLIF(trim(p_document_number), '');
     v_cust_type text := CASE WHEN v_doc_type = 'RUC' THEN 'COMPANY' ELSE 'PERSON' END;
+    v_norm_doc_type text := CASE WHEN v_doc_type IN ('DNI','RUC','CE','PASAPORTE') THEN v_doc_type ELSE 'OTRO' END;
+    v_credit_limit numeric(14,2) := COALESCE(p_credit_limit, 0.00);
 BEGIN
-    SELECT id INTO v_actor_id FROM public.profiles WHERE auth_user_id = auth.uid() LIMIT 1;
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('customers.manage'::text)
+        OR (p_customer_id IS NULL AND public.user_has_permission('pos.sale'::text))
+        OR public.is_admin()
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para guardar o editar clientes.' USING ERRCODE = '42501';
+    END IF;
+
+    IF v_clean_name IS NULL THEN
+        RAISE EXCEPTION 'El nombre completo del cliente es obligatorio.' USING ERRCODE = 'P0001';
+    END IF;
+
+    IF v_credit_limit < 0 THEN
+        RAISE EXCEPTION 'El límite de crédito no puede ser negativo.' USING ERRCODE = 'P0001';
+    END IF;
+
+    SELECT id INTO v_actor_id
+    FROM public.profiles
+    WHERE auth_user_id = auth.uid()
+    LIMIT 1;
 
     IF p_customer_id IS NOT NULL THEN
-        -- Puede llegar customers.id o profiles.id
-        SELECT id, profile_id INTO v_cust_id, v_profile_id
+        SELECT id, profile_id, wallet_balance
+        INTO v_cust_id, v_profile_id, v_old_wallet
         FROM public.customers
         WHERE id = p_customer_id OR profile_id = p_customer_id
-        LIMIT 1;
+        ORDER BY (id = p_customer_id) DESC
+        LIMIT 1
+        FOR UPDATE;
     END IF;
 
     IF v_cust_id IS NULL THEN
+        v_new_wallet := GREATEST(COALESCE(p_wallet_delta, 0), 0);
+        v_actual_delta := v_new_wallet;
+
         INSERT INTO public.customers (
             customer_type, document_type, document_number, full_name, phone,
             is_active, wallet_balance, created_by, updated_by
         ) VALUES (
             v_cust_type,
-            CASE WHEN v_doc_type IN ('DNI','RUC','CE','PASAPORTE') THEN v_doc_type ELSE 'OTRO' END,
+            v_norm_doc_type,
             v_doc_num,
-            COALESCE(NULLIF(trim(p_full_name), ''), 'Cliente'),
-            NULLIF(trim(p_phone), ''),
+            v_clean_name,
+            v_clean_phone,
             COALESCE(p_is_active, true),
-            GREATEST(COALESCE(p_wallet_delta, 0), 0),
+            v_new_wallet,
             v_actor_id,
             v_actor_id
         ) RETURNING id INTO v_cust_id;
     ELSE
+        v_new_wallet := GREATEST(COALESCE(v_old_wallet, 0) + COALESCE(p_wallet_delta, 0), 0);
+        v_actual_delta := v_new_wallet - COALESCE(v_old_wallet, 0);
+
         UPDATE public.customers
         SET
             customer_type = v_cust_type,
-            document_type = CASE WHEN v_doc_type IN ('DNI','RUC','CE','PASAPORTE') THEN v_doc_type ELSE 'OTRO' END,
+            document_type = v_norm_doc_type,
             document_number = v_doc_num,
-            full_name = COALESCE(NULLIF(trim(p_full_name), ''), full_name),
-            phone = NULLIF(trim(p_phone), ''),
+            full_name = v_clean_name,
+            phone = v_clean_phone,
             is_active = COALESCE(p_is_active, is_active),
-            wallet_balance = GREATEST(wallet_balance + COALESCE(p_wallet_delta, 0), 0),
+            wallet_balance = v_new_wallet,
             updated_by = v_actor_id,
             updated_at = now()
         WHERE id = v_cust_id;
     END IF;
 
-    -- Línea de crédito vinculada por customer_record_id (y profile_id si existe)
-    IF p_has_credit THEN
+    -- Registro obligatorio en el libro mayor de billetera cuando hay variación real
+    IF v_actual_delta <> 0 THEN
+        INSERT INTO public.wallet_movements (
+            customer_id,
+            profile_id,
+            points,
+            movement_type,
+            description
+        ) VALUES (
+            v_cust_id,
+            v_profile_id,
+            v_actual_delta,
+            'ADJUSTMENT',
+            CASE
+                WHEN v_actual_delta > 0 THEN 'Ajuste administrativo de billetera (+' || v_actual_delta || ')'
+                ELSE 'Ajuste administrativo de billetera (' || v_actual_delta || ')'
+            END
+        );
+    END IF;
+
+    -- Lock pesimista sobre la cuenta de crédito asociada
+    SELECT COALESCE(cc.current_debt, 0.00)
+    INTO v_current_debt
+    FROM public.customer_credits cc
+    WHERE cc.customer_record_id = v_cust_id
+    FOR UPDATE;
+
+    v_current_debt := COALESCE(v_current_debt, 0.00);
+
+    IF NOT COALESCE(p_has_credit, true) AND v_current_debt > 0 THEN
+        RAISE EXCEPTION 'No se puede desactivar el crédito mientras exista deuda pendiente (S/ %).', v_current_debt
+            USING ERRCODE = 'P0001';
+    END IF;
+
+    IF COALESCE(p_has_credit, true) AND v_credit_limit > 0 AND v_credit_limit < v_current_debt THEN
+        RAISE EXCEPTION 'El límite de crédito (S/ %) no puede ser menor a la deuda actual (S/ %).', v_credit_limit, v_current_debt
+            USING ERRCODE = 'P0001';
+    END IF;
+
+    IF COALESCE(p_has_credit, true) THEN
         INSERT INTO public.customer_credits (
             customer_record_id, profile_id, credit_limit, is_active, created_by
         ) VALUES (
-            v_cust_id, v_profile_id, COALESCE(p_credit_limit, 0.00), true, v_actor_id
+            v_cust_id, v_profile_id, v_credit_limit, true, v_actor_id
         )
         ON CONFLICT (customer_record_id)
         DO UPDATE SET
-            credit_limit = COALESCE(p_credit_limit, public.customer_credits.credit_limit),
+            credit_limit = v_credit_limit,
             is_active = true,
             updated_at = now();
     ELSE
@@ -5663,7 +7323,8 @@ BEGIN
     RETURN jsonb_build_object(
         'success', true,
         'customer_id', v_cust_id,
-        'profile_id', v_profile_id
+        'profile_id', v_profile_id,
+        'wallet_balance', v_new_wallet
     );
 END;
 $$;
@@ -5884,6 +7545,59 @@ $$;
 ALTER FUNCTION "public"."save_variant_attributes_rpc"("p_variant_id" "uuid", "p_attribute_value_ids" "uuid"[]) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."search_customers_without_credit_rpc"("p_query" "text" DEFAULT ''::"text", "p_limit" integer DEFAULT 8) RETURNS TABLE("id" "uuid", "full_name" "text", "document_number" "text", "document_type" "text", "phone" "text")
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_q text := trim(coalesce(p_query, ''));
+    v_limit integer := LEAST(GREATEST(coalesce(p_limit, 8), 1), 25);
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('credits.manage'::text)
+        OR public.user_has_permission('pos.sale'::text)
+        OR public.is_admin()
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para buscar clientes.' USING ERRCODE = '42501';
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        c.id,
+        c.full_name,
+        c.document_number,
+        c.document_type,
+        c.phone
+    FROM public.customers c
+    WHERE c.is_active = true
+      AND (
+          v_q = ''
+          OR c.full_name ILIKE '%' || v_q || '%'
+          OR coalesce(c.document_number, '') ILIKE '%' || v_q || '%'
+          OR coalesce(c.phone, '') ILIKE '%' || v_q || '%'
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM public.customer_credits cc
+          WHERE (
+              cc.customer_record_id = c.id
+              OR (c.profile_id IS NOT NULL AND cc.profile_id = c.profile_id)
+          )
+          AND cc.is_active = true
+      )
+    ORDER BY c.full_name ASC
+    LIMIT v_limit;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."search_customers_without_credit_rpc"("p_query" "text", "p_limit" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."search_ingredients_unaccent"("search_term" "text") RETURNS TABLE("id" "text")
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public', 'extensions'
@@ -5898,6 +7612,52 @@ $$;
 
 
 ALTER FUNCTION "public"."search_ingredients_unaccent"("search_term" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."search_suppliers_without_credit_rpc"("p_query" "text", "p_limit" integer DEFAULT 6) RETURNS TABLE("id" "uuid", "name" "text", "tax_id" "text", "phone" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_q text := trim(coalesce(p_query, ''));
+    v_limit integer := LEAST(GREATEST(coalesce(p_limit, 6), 1), 20);
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('purchases.view'::text)
+        OR public.user_has_permission('purchases.create'::text)
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para buscar proveedores.' USING ERRCODE = '42501';
+    END IF;
+
+    IF v_q = '' THEN
+        RETURN;
+    END IF;
+
+    RETURN QUERY
+    SELECT s.id, s.name, s.tax_id, s.phone
+    FROM public.suppliers s
+    WHERE s.is_active = true
+      AND NOT EXISTS (
+          SELECT 1
+          FROM public.supplier_credits sc
+          WHERE sc.supplier_id = s.id
+      )
+      AND (
+          s.name ILIKE '%' || v_q || '%'
+          OR coalesce(s.tax_id, '') ILIKE '%' || v_q || '%'
+          OR coalesce(s.phone, '') ILIKE '%' || v_q || '%'
+      )
+    ORDER BY s.name ASC
+    LIMIT v_limit;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."search_suppliers_without_credit_rpc"("p_query" "text", "p_limit" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_default_location"("p_profile_id" "uuid", "p_location_id" "uuid") RETURNS "void"
@@ -6071,6 +7831,60 @@ $$;
 
 
 ALTER FUNCTION "public"."sync_purchase_order_reception_rpc"("p_purchase_order_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."toggle_customer_status_rpc"("p_customer_id" "uuid", "p_is_active" boolean) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_actor_id uuid;
+    v_cust_id uuid;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT (
+        public.user_has_permission('customers.manage'::text)
+        OR public.is_admin()
+    ) THEN
+        RAISE EXCEPTION 'No tienes permisos para cambiar el estado de clientes.' USING ERRCODE = '42501';
+    END IF;
+
+    SELECT id INTO v_actor_id
+    FROM public.profiles
+    WHERE auth_user_id = auth.uid()
+    LIMIT 1;
+
+    SELECT id INTO v_cust_id
+    FROM public.customers
+    WHERE id = p_customer_id OR profile_id = p_customer_id
+    ORDER BY (id = p_customer_id) DESC
+    LIMIT 1
+    FOR UPDATE;
+
+    IF v_cust_id IS NULL THEN
+        RAISE EXCEPTION 'Cliente no encontrado.' USING ERRCODE = 'P0002';
+    END IF;
+
+    UPDATE public.customers
+    SET
+        is_active = p_is_active,
+        updated_by = v_actor_id,
+        updated_at = now()
+    WHERE id = v_cust_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'customer_id', v_cust_id,
+        'is_active', p_is_active
+    );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."toggle_customer_status_rpc"("p_customer_id" "uuid", "p_is_active" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid", "p_dest_account_id" "uuid", "p_amount" numeric, "p_description" "text", "p_created_by" "uuid") RETURNS "void"
@@ -6585,6 +8399,89 @@ $$;
 ALTER FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."upsert_business_info_rpc"("p_business_name" "text", "p_tax_id" "text" DEFAULT NULL::"text", "p_address" "text" DEFAULT NULL::"text", "p_phone" "text" DEFAULT NULL::"text", "p_logo_url" "text" DEFAULT NULL::"text", "p_loyalty_global_enabled" boolean DEFAULT false, "p_loyalty_customer_visible" boolean DEFAULT false, "p_cash_register_mode" "text" DEFAULT 'COUNTER'::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_name text := trim(coalesce(p_business_name, ''));
+    v_mode text := upper(trim(coalesce(p_cash_register_mode, 'COUNTER')));
+    v_result jsonb;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'No autenticado' USING ERRCODE = '42501';
+    END IF;
+
+    IF NOT public.user_has_permission('settings.edit'::text) THEN
+        RAISE EXCEPTION 'No tienes permisos para editar la configuración del negocio.'
+            USING ERRCODE = '42501';
+    END IF;
+
+    IF v_name = '' THEN
+        RAISE EXCEPTION 'El nombre del negocio es obligatorio.'
+            USING ERRCODE = '22023';
+    END IF;
+
+    IF v_mode NOT IN ('COUNTER', 'INDIVIDUAL') THEN
+        RAISE EXCEPTION 'Modo de caja inválido: %', p_cash_register_mode
+            USING ERRCODE = '22023';
+    END IF;
+
+    INSERT INTO public.business_info (
+        singleton_guard,
+        business_name,
+        tax_id,
+        address,
+        phone,
+        logo_url,
+        loyalty_global_enabled,
+        loyalty_customer_visible,
+        cash_register_mode,
+        updated_at
+    )
+    VALUES (
+        true,
+        v_name,
+        NULLIF(trim(coalesce(p_tax_id, '')), ''),
+        NULLIF(trim(coalesce(p_address, '')), ''),
+        NULLIF(trim(coalesce(p_phone, '')), ''),
+        NULLIF(trim(coalesce(p_logo_url, '')), ''),
+        coalesce(p_loyalty_global_enabled, false),
+        coalesce(p_loyalty_customer_visible, false),
+        v_mode,
+        now()
+    )
+    ON CONFLICT (singleton_guard) DO UPDATE SET
+        business_name            = EXCLUDED.business_name,
+        tax_id                   = EXCLUDED.tax_id,
+        address                  = EXCLUDED.address,
+        phone                    = EXCLUDED.phone,
+        logo_url                 = EXCLUDED.logo_url,
+        loyalty_global_enabled   = EXCLUDED.loyalty_global_enabled,
+        loyalty_customer_visible = EXCLUDED.loyalty_customer_visible,
+        cash_register_mode       = EXCLUDED.cash_register_mode,
+        updated_at               = now()
+    RETURNING jsonb_build_object(
+        'id', id,
+        'business_name', business_name,
+        'tax_id', tax_id,
+        'address', address,
+        'phone', phone,
+        'logo_url', logo_url,
+        'loyalty_global_enabled', loyalty_global_enabled,
+        'loyalty_customer_visible', loyalty_customer_visible,
+        'cash_register_mode', cash_register_mode
+    )
+    INTO v_result;
+
+    RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."upsert_business_info_rpc"("p_business_name" "text", "p_tax_id" "text", "p_address" "text", "p_phone" "text", "p_logo_url" "text", "p_loyalty_global_enabled" boolean, "p_loyalty_customer_visible" boolean, "p_cash_register_mode" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."user_has_permission"("p_permission_code" "text") RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -6773,7 +8670,9 @@ CREATE TABLE IF NOT EXISTS "public"."business_info" (
     "loyalty_customer_visible" boolean DEFAULT true,
     "raffles_global_enabled" boolean DEFAULT false,
     "raffles_customer_visible" boolean DEFAULT false,
-    "cash_register_mode" character varying(20) DEFAULT 'COUNTER'::character varying
+    "cash_register_mode" character varying(20) DEFAULT 'COUNTER'::character varying,
+    "singleton_guard" boolean DEFAULT true NOT NULL,
+    CONSTRAINT "business_info_singleton_guard_check" CHECK (("singleton_guard" = true))
 );
 
 
@@ -7004,6 +8903,17 @@ CREATE OR REPLACE VIEW "public"."customer_credit_movements_summary" WITH ("secur
 ALTER VIEW "public"."customer_credit_movements_summary" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."customer_credit_payment_idempotency" (
+    "idempotency_key" "uuid" NOT NULL,
+    "credit_id" "uuid" NOT NULL,
+    "response" "jsonb" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."customer_credit_payment_idempotency" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."customer_credits" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "profile_id" "uuid",
@@ -7016,6 +8926,7 @@ CREATE TABLE IF NOT EXISTS "public"."customer_credits" (
     "customer_record_id" "uuid",
     "credit_balance" numeric(14,2) DEFAULT 0.00 NOT NULL,
     CONSTRAINT "customer_credits_credit_balance_check" CHECK (("credit_balance" >= (0)::numeric)),
+    CONSTRAINT "customer_credits_credit_limit_check" CHECK (("credit_limit" >= (0)::numeric)),
     CONSTRAINT "customer_credits_current_debt_check" CHECK (("current_debt" >= (0)::numeric)),
     CONSTRAINT "customer_credits_owner_check" CHECK ((("profile_id" IS NOT NULL) OR ("customer_record_id" IS NOT NULL)))
 );
@@ -8121,6 +10032,7 @@ CREATE TABLE IF NOT EXISTS "public"."supplier_credit_movements" (
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "purchase_invoice_id" "uuid",
+    "idempotency_key" "uuid",
     CONSTRAINT "supplier_credit_movements_amount_check" CHECK (("amount" > (0)::numeric)),
     CONSTRAINT "supplier_credit_movements_movement_type_check" CHECK (("movement_type" = ANY (ARRAY['CHARGE'::"text", 'PAYMENT'::"text"])))
 );
@@ -8139,6 +10051,7 @@ CREATE TABLE IF NOT EXISTS "public"."supplier_credits" (
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "created_by" "uuid",
+    CONSTRAINT "supplier_credits_credit_limit_check" CHECK (("credit_limit" >= (0)::numeric)),
     CONSTRAINT "supplier_credits_current_debt_check" CHECK (("current_debt" >= (0)::numeric))
 );
 
@@ -8155,7 +10068,9 @@ CREATE TABLE IF NOT EXISTS "public"."suppliers" (
     "email" "text",
     "address" "text",
     "is_active" boolean DEFAULT true NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"()
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "suppliers_name_not_blank" CHECK (("length"(TRIM(BOTH FROM "name")) > 0))
 );
 
 
@@ -8487,6 +10402,11 @@ ALTER TABLE ONLY "public"."customer_credit_movements"
 
 ALTER TABLE ONLY "public"."currencies"
     ADD CONSTRAINT "currencies_pkey" PRIMARY KEY ("code");
+
+
+
+ALTER TABLE ONLY "public"."customer_credit_payment_idempotency"
+    ADD CONSTRAINT "customer_credit_payment_idempotency_pkey" PRIMARY KEY ("idempotency_key");
 
 
 
@@ -9118,6 +11038,10 @@ CREATE INDEX "idx_audit_logs_table_record" ON "public"."audit_logs" USING "btree
 
 
 
+CREATE UNIQUE INDEX "idx_business_info_singleton" ON "public"."business_info" USING "btree" ("singleton_guard");
+
+
+
 CREATE UNIQUE INDEX "idx_cash_shifts_one_open_per_account" ON "public"."cash_shifts" USING "btree" ("account_id") WHERE ("status" = 'OPEN'::"text");
 
 
@@ -9130,6 +11054,10 @@ CREATE INDEX "idx_customer_credit_movements_created_by" ON "public"."customer_cr
 
 
 
+CREATE INDEX "idx_customer_credit_movements_credit_created" ON "public"."customer_credit_movements" USING "btree" ("customer_credit_id", "created_at" DESC);
+
+
+
 CREATE INDEX "idx_customer_credit_movements_customer_credit_id" ON "public"."customer_credit_movements" USING "btree" ("customer_credit_id");
 
 
@@ -9138,7 +11066,39 @@ CREATE INDEX "idx_customer_credit_movements_order_id" ON "public"."customer_cred
 
 
 
+CREATE INDEX "idx_customer_credits_active_debt" ON "public"."customer_credits" USING "btree" ("is_active", "current_debt" DESC, "id");
+
+
+
+CREATE INDEX "idx_customer_credits_customer_record_debt" ON "public"."customer_credits" USING "btree" ("customer_record_id") WHERE ("current_debt" > (0)::numeric);
+
+
+
+CREATE INDEX "idx_customer_credits_customer_record_id" ON "public"."customer_credits" USING "btree" ("customer_record_id");
+
+
+
+CREATE INDEX "idx_customer_credits_debt_id" ON "public"."customer_credits" USING "btree" ("current_debt" DESC, "id");
+
+
+
+CREATE INDEX "idx_customer_locations_customer_record" ON "public"."customer_locations" USING "btree" ("customer_record_id");
+
+
+
 CREATE INDEX "idx_customer_locations_profile_id" ON "public"."customer_locations" USING "btree" ("profile_id");
+
+
+
+CREATE INDEX "idx_customers_active_created" ON "public"."customers" USING "btree" ("is_active", "created_at" DESC, "id" DESC);
+
+
+
+CREATE INDEX "idx_customers_created_id" ON "public"."customers" USING "btree" ("created_at" DESC, "id" DESC);
+
+
+
+CREATE INDEX "idx_customers_document_number_trgm" ON "public"."customers" USING "gin" ("document_number" "public"."gin_trgm_ops");
 
 
 
@@ -9147,6 +11107,14 @@ CREATE UNIQUE INDEX "idx_customers_document_unique" ON "public"."customers" USIN
 
 
 CREATE INDEX "idx_customers_full_name" ON "public"."customers" USING "btree" ("full_name");
+
+
+
+CREATE INDEX "idx_customers_full_name_trgm" ON "public"."customers" USING "gin" ("full_name" "public"."gin_trgm_ops");
+
+
+
+CREATE INDEX "idx_customers_phone_trgm" ON "public"."customers" USING "gin" ("phone" "public"."gin_trgm_ops");
 
 
 
@@ -9342,6 +11310,10 @@ CREATE INDEX "idx_orders_customer_id" ON "public"."orders" USING "btree" ("custo
 
 
 
+CREATE INDEX "idx_orders_customer_record_completed" ON "public"."orders" USING "btree" ("customer_record_id", "created_at" DESC) WHERE ("status" = 'COMPLETED'::"text");
+
+
+
 CREATE INDEX "idx_orders_customer_record_id" ON "public"."orders" USING "btree" ("customer_record_id");
 
 
@@ -9351,6 +11323,10 @@ CREATE INDEX "idx_orders_delivery_location" ON "public"."orders" USING "btree" (
 
 
 CREATE UNIQUE INDEX "idx_orders_document_unique" ON "public"."orders" USING "btree" ("document_type", "document_series", "document_number") WHERE (("document_number" IS NOT NULL) AND ("document_type" IS NOT NULL) AND ("document_type" <> 'NINGUNO'::"text") AND ("status" <> 'CANCELLED'::"text"));
+
+
+
+CREATE INDEX "idx_orders_pending_status" ON "public"."orders" USING "btree" ("id") WHERE ("status" = 'PENDING'::"text");
 
 
 
@@ -9506,7 +11482,43 @@ CREATE INDEX "idx_supplier_credit_movements_credit_id" ON "public"."supplier_cre
 
 
 
+CREATE UNIQUE INDEX "idx_supplier_credit_movements_idempotency" ON "public"."supplier_credit_movements" USING "btree" ("idempotency_key") WHERE ("idempotency_key" IS NOT NULL);
+
+
+
 CREATE INDEX "idx_supplier_credit_movements_po_id" ON "public"."supplier_credit_movements" USING "btree" ("purchase_order_id");
+
+
+
+CREATE INDEX "idx_supplier_credits_active_debt" ON "public"."supplier_credits" USING "btree" ("current_debt" DESC, "id") WHERE (("is_active" = true) AND ("current_debt" > (0)::numeric));
+
+
+
+CREATE INDEX "idx_supplier_credits_debt_desc" ON "public"."supplier_credits" USING "btree" ("current_debt" DESC, "id");
+
+
+
+CREATE INDEX "idx_suppliers_active_name" ON "public"."suppliers" USING "btree" ("is_active", "name", "id");
+
+
+
+CREATE INDEX "idx_suppliers_contact_name_trgm" ON "public"."suppliers" USING "gin" ("contact_name" "public"."gin_trgm_ops");
+
+
+
+CREATE INDEX "idx_suppliers_name_trgm" ON "public"."suppliers" USING "gin" ("name" "public"."gin_trgm_ops");
+
+
+
+CREATE INDEX "idx_suppliers_phone_trgm" ON "public"."suppliers" USING "gin" ("phone" "public"."gin_trgm_ops");
+
+
+
+CREATE UNIQUE INDEX "idx_suppliers_tax_id_normalized" ON "public"."suppliers" USING "btree" (TRIM(BOTH FROM "tax_id")) WHERE (("tax_id" IS NOT NULL) AND (TRIM(BOTH FROM "tax_id") <> ''::"text"));
+
+
+
+CREATE INDEX "idx_suppliers_tax_id_trgm" ON "public"."suppliers" USING "gin" ("tax_id" "public"."gin_trgm_ops");
 
 
 
@@ -9551,6 +11563,10 @@ CREATE INDEX "idx_wh_transfers_dest" ON "public"."warehouse_transfers" USING "bt
 
 
 CREATE INDEX "idx_wh_transfers_source" ON "public"."warehouse_transfers" USING "btree" ("source_warehouse_id");
+
+
+
+CREATE INDEX "idx_wsb_active_expiry" ON "public"."warehouse_stock_batches" USING "btree" ("expiry_date", "variant_id") WHERE (("available_quantity" > (0)::numeric) AND ("expiry_date" IS NOT NULL));
 
 
 
@@ -11094,6 +13110,14 @@ CREATE POLICY "Créditos cliente: Lectura por permiso o propio" ON "public"."cus
 
 
 
+CREATE POLICY "Créditos proveedor: Actualización por permiso" ON "public"."supplier_credits" FOR UPDATE TO "authenticated" USING ("public"."user_has_permission"('purchases.create'::"text")) WITH CHECK ("public"."user_has_permission"('purchases.create'::"text"));
+
+
+
+CREATE POLICY "Créditos proveedor: Inserción por permiso" ON "public"."supplier_credits" FOR INSERT TO "authenticated" WITH CHECK ("public"."user_has_permission"('purchases.create'::"text"));
+
+
+
 CREATE POLICY "Créditos proveedor: Lectura por permiso" ON "public"."supplier_credits" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('purchases.view'::"text") OR "public"."user_has_permission"('reports.financial'::"text")));
 
 
@@ -12138,21 +14162,33 @@ GRANT ALL ON FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, 
 
 
 
-GRANT ALL ON FUNCTION "public"."get_credit_movements_totals_rpc"("p_credit_id" "uuid", "p_date_filter" "text") TO "anon";
+REVOKE ALL ON FUNCTION "public"."get_credit_movements_totals_rpc"("p_credit_id" "uuid", "p_date_filter" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_credit_movements_totals_rpc"("p_credit_id" "uuid", "p_date_filter" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_credit_movements_totals_rpc"("p_credit_id" "uuid", "p_date_filter" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") TO "anon";
+REVOKE ALL ON FUNCTION "public"."get_customer_credits_page_rpc"("p_search_query" "text", "p_with_debt_only" boolean, "p_limit" integer, "p_offset" integer, "p_include_stats" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_customer_credits_page_rpc"("p_search_query" "text", "p_with_debt_only" boolean, "p_limit" integer, "p_offset" integer, "p_include_stats" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_customer_credits_page_rpc"("p_search_query" "text", "p_with_debt_only" boolean, "p_limit" integer, "p_offset" integer, "p_include_stats" boolean) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_customers_global_stats_rpc"() TO "anon";
+REVOKE ALL ON FUNCTION "public"."get_customers_global_stats_rpc"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_customers_global_stats_rpc"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_customers_global_stats_rpc"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_customers_page_rpc"("p_search_query" "text", "p_only_with_debt" boolean, "p_limit" integer, "p_offset" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_customers_page_rpc"("p_search_query" "text", "p_only_with_debt" boolean, "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_customers_page_rpc"("p_search_query" "text", "p_only_with_debt" boolean, "p_limit" integer, "p_offset" integer) TO "service_role";
 
 
 
@@ -12211,9 +14247,21 @@ GRANT ALL ON FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "
 
 
 
-GRANT ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") TO "anon";
+REVOKE ALL ON FUNCTION "public"."get_supplier_credits_page_rpc"("p_search_query" "text", "p_with_debt_only" boolean, "p_limit" integer, "p_offset" integer, "p_include_stats" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_supplier_credits_page_rpc"("p_search_query" "text", "p_with_debt_only" boolean, "p_limit" integer, "p_offset" integer, "p_include_stats" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_supplier_credits_page_rpc"("p_search_query" "text", "p_with_debt_only" boolean, "p_limit" integer, "p_offset" integer, "p_include_stats" boolean) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_suppliers_page_rpc"("p_search_query" "text", "p_is_active" boolean, "p_limit" integer, "p_offset" integer, "p_include_stats" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_suppliers_page_rpc"("p_search_query" "text", "p_is_active" boolean, "p_limit" integer, "p_offset" integer, "p_include_stats" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_suppliers_page_rpc"("p_search_query" "text", "p_is_active" boolean, "p_limit" integer, "p_offset" integer, "p_include_stats" boolean) TO "service_role";
 
 
 
@@ -12223,9 +14271,9 @@ GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "servic
 
 
 
-GRANT ALL ON FUNCTION "public"."get_top_customers_rpc"("p_limit" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."get_top_customers_rpc"("p_limit" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_top_customers_rpc"("p_limit" integer) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."get_top_customers_rpc"("p_limit" integer, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_top_customers_rpc"("p_limit" integer, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_top_customers_rpc"("p_limit" integer, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "service_role";
 
 
 
@@ -12386,9 +14434,9 @@ GRANT ALL ON FUNCTION "public"."reconcile_balances_report"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_idempotency_key" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_idempotency_key" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_idempotency_key" "uuid") TO "service_role";
 
 
 
@@ -12404,6 +14452,12 @@ GRANT ALL ON FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplie
 
 
 
+REVOKE ALL ON FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid", "p_idempotency_key" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid", "p_idempotency_key" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid", "p_idempotency_key" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."rpc_adjust_financial_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_reason" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_adjust_financial_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_reason" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_adjust_financial_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_reason" "text") TO "service_role";
@@ -12413,6 +14467,12 @@ GRANT ALL ON FUNCTION "public"."rpc_adjust_financial_account_balance"("p_account
 GRANT ALL ON FUNCTION "public"."rpc_adjust_wallet"("p_user_id" "uuid", "p_amount" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_adjust_wallet"("p_user_id" "uuid", "p_amount" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_adjust_wallet"("p_user_id" "uuid", "p_amount" integer) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."rpc_bulk_toggle_suppliers_status"("p_supplier_ids" "uuid"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rpc_bulk_toggle_suppliers_status"("p_supplier_ids" "uuid"[]) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_bulk_toggle_suppliers_status"("p_supplier_ids" "uuid"[]) TO "service_role";
 
 
 
@@ -12440,13 +14500,19 @@ GRANT ALL ON FUNCTION "public"."rpc_convert_quotation_to_order"("p_quotation_id"
 
 
 
+REVOKE ALL ON FUNCTION "public"."rpc_create_customer_credit"("p_customer_id" "uuid", "p_credit_limit" numeric) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rpc_create_customer_credit"("p_customer_id" "uuid", "p_credit_limit" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_create_customer_credit"("p_customer_id" "uuid", "p_credit_limit" numeric) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."rpc_create_journal_entry"("payload" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_create_journal_entry"("payload" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_create_journal_entry"("payload" "jsonb") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."rpc_create_supplier_credit"("p_supplier_id" "uuid", "p_credit_limit" numeric) TO "anon";
+REVOKE ALL ON FUNCTION "public"."rpc_create_supplier_credit"("p_supplier_id" "uuid", "p_credit_limit" numeric) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_create_supplier_credit"("p_supplier_id" "uuid", "p_credit_limit" numeric) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_create_supplier_credit"("p_supplier_id" "uuid", "p_credit_limit" numeric) TO "service_role";
 
@@ -12500,9 +14566,39 @@ GRANT ALL ON FUNCTION "public"."rpc_resolve_variant_price"("p_variant_id" "uuid"
 
 
 
+REVOKE ALL ON FUNCTION "public"."rpc_toggle_customer_credit_status"("p_credit_id" "uuid", "p_is_active" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rpc_toggle_customer_credit_status"("p_credit_id" "uuid", "p_is_active" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_toggle_customer_credit_status"("p_credit_id" "uuid", "p_is_active" boolean) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."rpc_toggle_supplier_credit_status"("p_credit_id" "uuid", "p_is_active" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rpc_toggle_supplier_credit_status"("p_credit_id" "uuid", "p_is_active" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_toggle_supplier_credit_status"("p_credit_id" "uuid", "p_is_active" boolean) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."rpc_toggle_supplier_status"("p_supplier_id" "uuid", "p_is_active" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rpc_toggle_supplier_status"("p_supplier_id" "uuid", "p_is_active" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_toggle_supplier_status"("p_supplier_id" "uuid", "p_is_active" boolean) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."rpc_transfer_warehouse_stock"("payload" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_transfer_warehouse_stock"("payload" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_transfer_warehouse_stock"("payload" "jsonb") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."rpc_update_customer_credit_limit"("p_credit_id" "uuid", "p_credit_limit" numeric) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rpc_update_customer_credit_limit"("p_credit_id" "uuid", "p_credit_limit" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_update_customer_credit_limit"("p_credit_id" "uuid", "p_credit_limit" numeric) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."rpc_update_supplier_credit_limit"("p_credit_id" "uuid", "p_credit_limit" numeric) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rpc_update_supplier_credit_limit"("p_credit_id" "uuid", "p_credit_limit" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_update_supplier_credit_limit"("p_credit_id" "uuid", "p_credit_limit" numeric) TO "service_role";
 
 
 
@@ -12512,7 +14608,13 @@ GRANT ALL ON FUNCTION "public"."rpc_upsert_customer"("payload" "jsonb") TO "serv
 
 
 
-GRANT ALL ON FUNCTION "public"."save_customer_full_profile_rpc"("p_customer_id" "uuid", "p_full_name" "text", "p_phone" "text", "p_document_number" "text", "p_document_type" "text", "p_is_active" boolean, "p_wallet_delta" integer, "p_has_credit" boolean, "p_credit_limit" numeric) TO "anon";
+REVOKE ALL ON FUNCTION "public"."rpc_upsert_supplier"("p_id" "uuid", "p_name" "text", "p_tax_id" "text", "p_contact_name" "text", "p_phone" "text", "p_email" "text", "p_address" "text", "p_is_active" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rpc_upsert_supplier"("p_id" "uuid", "p_name" "text", "p_tax_id" "text", "p_contact_name" "text", "p_phone" "text", "p_email" "text", "p_address" "text", "p_is_active" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_upsert_supplier"("p_id" "uuid", "p_name" "text", "p_tax_id" "text", "p_contact_name" "text", "p_phone" "text", "p_email" "text", "p_address" "text", "p_is_active" boolean) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."save_customer_full_profile_rpc"("p_customer_id" "uuid", "p_full_name" "text", "p_phone" "text", "p_document_number" "text", "p_document_type" "text", "p_is_active" boolean, "p_wallet_delta" integer, "p_has_credit" boolean, "p_credit_limit" numeric) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."save_customer_full_profile_rpc"("p_customer_id" "uuid", "p_full_name" "text", "p_phone" "text", "p_document_number" "text", "p_document_type" "text", "p_is_active" boolean, "p_wallet_delta" integer, "p_has_credit" boolean, "p_credit_limit" numeric) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."save_customer_full_profile_rpc"("p_customer_id" "uuid", "p_full_name" "text", "p_phone" "text", "p_document_number" "text", "p_document_type" "text", "p_is_active" boolean, "p_wallet_delta" integer, "p_has_credit" boolean, "p_credit_limit" numeric) TO "service_role";
 
@@ -12530,9 +14632,21 @@ GRANT ALL ON FUNCTION "public"."save_variant_attributes_rpc"("p_variant_id" "uui
 
 
 
+REVOKE ALL ON FUNCTION "public"."search_customers_without_credit_rpc"("p_query" "text", "p_limit" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."search_customers_without_credit_rpc"("p_query" "text", "p_limit" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."search_customers_without_credit_rpc"("p_query" "text", "p_limit" integer) TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."search_ingredients_unaccent"("search_term" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."search_ingredients_unaccent"("search_term" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."search_ingredients_unaccent"("search_term" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."search_suppliers_without_credit_rpc"("p_query" "text", "p_limit" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."search_suppliers_without_credit_rpc"("p_query" "text", "p_limit" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."search_suppliers_without_credit_rpc"("p_query" "text", "p_limit" integer) TO "service_role";
 
 
 
@@ -12631,6 +14745,12 @@ GRANT ALL ON FUNCTION "public"."sync_purchase_order_reception_rpc"("p_purchase_o
 
 
 
+REVOKE ALL ON FUNCTION "public"."toggle_customer_status_rpc"("p_customer_id" "uuid", "p_is_active" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."toggle_customer_status_rpc"("p_customer_id" "uuid", "p_is_active" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."toggle_customer_status_rpc"("p_customer_id" "uuid", "p_is_active" boolean) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid", "p_dest_account_id" "uuid", "p_amount" numeric, "p_description" "text", "p_created_by" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid", "p_dest_account_id" "uuid", "p_amount" numeric, "p_description" "text", "p_created_by" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid", "p_dest_account_id" "uuid", "p_amount" numeric, "p_description" "text", "p_created_by" "uuid") TO "service_role";
@@ -12712,6 +14832,12 @@ GRANT ALL ON FUNCTION "public"."trg_track_order_status"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."upsert_business_info_rpc"("p_business_name" "text", "p_tax_id" "text", "p_address" "text", "p_phone" "text", "p_logo_url" "text", "p_loyalty_global_enabled" boolean, "p_loyalty_customer_visible" boolean, "p_cash_register_mode" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."upsert_business_info_rpc"("p_business_name" "text", "p_tax_id" "text", "p_address" "text", "p_phone" "text", "p_logo_url" "text", "p_loyalty_global_enabled" boolean, "p_loyalty_customer_visible" boolean, "p_cash_register_mode" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."upsert_business_info_rpc"("p_business_name" "text", "p_tax_id" "text", "p_address" "text", "p_phone" "text", "p_logo_url" "text", "p_loyalty_global_enabled" boolean, "p_loyalty_customer_visible" boolean, "p_cash_register_mode" "text") TO "service_role";
 
 
 
@@ -12873,7 +14999,6 @@ GRANT ALL ON TABLE "public"."currencies" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."customer_credit_movements" TO "anon";
 GRANT ALL ON TABLE "public"."customer_credit_movements" TO "authenticated";
 GRANT ALL ON TABLE "public"."customer_credit_movements" TO "service_role";
 
@@ -12891,13 +15016,15 @@ GRANT ALL ON TABLE "public"."profiles" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."customer_credit_movements_summary" TO "anon";
 GRANT ALL ON TABLE "public"."customer_credit_movements_summary" TO "authenticated";
 GRANT ALL ON TABLE "public"."customer_credit_movements_summary" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."customer_credits" TO "anon";
+GRANT ALL ON TABLE "public"."customer_credit_payment_idempotency" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."customer_credits" TO "authenticated";
 GRANT ALL ON TABLE "public"."customer_credits" TO "service_role";
 
@@ -12909,7 +15036,6 @@ GRANT ALL ON TABLE "public"."customer_locations" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."customers" TO "anon";
 GRANT ALL ON TABLE "public"."customers" TO "authenticated";
 GRANT ALL ON TABLE "public"."customers" TO "service_role";
 
@@ -13237,7 +15363,6 @@ GRANT ALL ON TABLE "public"."supplier_credits" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."suppliers" TO "anon";
 GRANT ALL ON TABLE "public"."suppliers" TO "authenticated";
 GRANT ALL ON TABLE "public"."suppliers" TO "service_role";
 

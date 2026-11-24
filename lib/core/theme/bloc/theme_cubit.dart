@@ -66,10 +66,18 @@ class ThemeCubit extends Cubit<ThemeMode> {
     }
   }
 
-  Future<void> toggleTheme() async {
-    final nextMode = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+  Future<void> toggleTheme({Brightness? platformBrightness}) async {
+    final currentlyDark =
+        state == ThemeMode.dark ||
+        (state == ThemeMode.system && platformBrightness == Brightness.dark);
+    final nextMode = currentlyDark ? ThemeMode.light : ThemeMode.dark;
     await setThemeMode(nextMode);
   }
 
   bool get isDarkMode => state == ThemeMode.dark;
+
+  bool isDarkEffective(BuildContext context) =>
+      state == ThemeMode.system
+          ? Theme.of(context).brightness == Brightness.dark
+          : state == ThemeMode.dark;
 }

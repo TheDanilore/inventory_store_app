@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/suppliers/suppliers_cubit.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/suppliers/suppliers_state.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class SupplierFormSheet extends StatefulWidget {
   final SupplierEntity? supplierToEdit;
@@ -24,6 +23,10 @@ class SupplierFormSheet extends StatefulWidget {
 }
 
 class _SupplierFormSheetState extends State<SupplierFormSheet> {
+  static final RegExp _emailRegExp = RegExp(
+    r'^[\w\-\.\+]+@([\w\-]+\.)+[\w\-]{2,}$',
+  );
+
   final _formKey = GlobalKey<FormState>();
 
   final _nameCtrl = TextEditingController();
@@ -60,6 +63,12 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
     super.dispose();
   }
 
+  String? _validateEmail(String? val) {
+    if (val == null || val.trim().isEmpty) return null;
+    if (!_emailRegExp.hasMatch(val.trim())) return 'Correo inválido';
+    return null;
+  }
+
   void _saveSupplier() {
     if (!_formKey.currentState!.validate()) return;
 
@@ -81,7 +90,7 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final isDesktop = widget.isDialog;
 
     final formFields = Column(
@@ -89,7 +98,6 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (isDesktop) ...[
-          // Fila 1: Nombre (flex 6) + RUC (flex 4)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -114,8 +122,6 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
               ),
             ],
           ),
-
-          // Fila 2: Contacto (flex 5) + Teléfono (flex 5)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -139,8 +145,6 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
               ),
             ],
           ),
-
-          // Fila 3: Correo (flex 5) + Dirección (flex 5)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -151,12 +155,7 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
                   label: 'Correo electrónico',
                   icon: Icons.email_rounded,
                   keyboardType: TextInputType.emailAddress,
-                  validator: (val) {
-                    if (val == null || val.trim().isEmpty) return null;
-                    final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                    if (!regex.hasMatch(val.trim())) return 'Correo inválido';
-                    return null;
-                  },
+                  validator: _validateEmail,
                 ),
               ),
               const SizedBox(width: 12),
@@ -171,7 +170,6 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
             ],
           ),
         ] else ...[
-          // Disposición Móvil: Apilada con espaciado ergonómico
           _buildTextField(
             controller: _nameCtrl,
             label: 'Nombre o Razón Social *',
@@ -206,12 +204,7 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
                   label: 'Correo electrónico',
                   icon: Icons.email_rounded,
                   keyboardType: TextInputType.emailAddress,
-                  validator: (val) {
-                    if (val == null || val.trim().isEmpty) return null;
-                    final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                    if (!regex.hasMatch(val.trim())) return 'Correo inválido';
-                    return null;
-                  },
+                  validator: _validateEmail,
                 ),
               ),
             ],
@@ -228,26 +221,17 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
     final actionButtons = BlocConsumer<SuppliersCubit, SuppliersState>(
       listenWhen:
           (previous, current) =>
-              current is SupplierSaveSuccess || current is SupplierSaveError,
+              current.mutationKind == SupplierMutationKind.save &&
+              previous.mutationStatus != current.mutationStatus &&
+              current.mutationStatus == SupplierMutationStatus.success,
       listener: (context, state) {
-        if (state is SupplierSaveError) {
-          AppSnackbar.show(
-            context,
-            message: state.message,
-            type: SnackbarType.error,
-          );
-        } else if (state is SupplierSaveSuccess) {
-          AppSnackbar.show(
-            context,
-            message: state.message,
-            type: SnackbarType.success,
-          );
-          widget.onSaved();
-          Navigator.pop(context);
-        }
+        widget.onSaved();
+        Navigator.pop(context);
       },
       builder: (context, state) {
-        final isLoading = state is SupplierSaving;
+        final isLoading =
+            state.mutationKind == SupplierMutationKind.save &&
+            state.mutationStatus == SupplierMutationStatus.submitting;
 
         if (isDesktop) {
           return Row(
@@ -339,7 +323,6 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
       },
     );
 
-    // --- DISEÑO DESKTOP (Side-Sheet Corporativo Elegante) ---
     if (isDesktop) {
       return Container(
         color: AppColors.surface,
@@ -347,7 +330,6 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Cabecera Desktop con [ESC] y [✕]
             Container(
               padding: const EdgeInsets.fromLTRB(24, 20, 20, 16),
               decoration: const BoxDecoration(
@@ -424,14 +406,10 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
                 ],
               ),
             ),
-
-            // Formulario en 2 Columnas
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
               child: Form(key: _formKey, child: formFields),
             ),
-
-            // Footer con botones Cancelar y Guardar
             Container(
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
               decoration: const BoxDecoration(
@@ -448,7 +426,6 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
       );
     }
 
-    // --- DISEÑO MÓVIL (Apple HIG BottomSheet con Drag Handle) ---
     return Container(
       padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + bottomInset),
       decoration: const BoxDecoration(

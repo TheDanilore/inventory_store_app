@@ -9,7 +9,95 @@ class AdminMenuSection {
   const AdminMenuSection({required this.title, required this.items});
 }
 
+/// Estructura inmutable del menú administrativo resuelto por permisos RBAC.
+/// Fuente única de verdad compartida por [AdminSidebar] y [AppDrawer].
+class AdminNavigationMenu {
+  final bool canViewCatalog;
+  final bool canViewOrders;
+  final bool canViewSettings;
+  final List<AdminSidebarItem> inventoryChildren;
+  final List<AdminSidebarItem> purchasesChildren;
+  final List<AdminSidebarItem> customersChildren;
+  final List<AdminSidebarItem> mastersChildren;
+  final List<AdminSidebarItem> systemChildren;
+
+  const AdminNavigationMenu({
+    required this.canViewCatalog,
+    required this.canViewOrders,
+    required this.canViewSettings,
+    required this.inventoryChildren,
+    required this.purchasesChildren,
+    required this.customersChildren,
+    required this.mastersChildren,
+    required this.systemChildren,
+  });
+
+  bool get hasCommercialSection =>
+      canViewOrders ||
+      inventoryChildren.isNotEmpty ||
+      purchasesChildren.isNotEmpty ||
+      customersChildren.isNotEmpty;
+
+  bool get hasErpSection =>
+      mastersChildren.isNotEmpty || systemChildren.isNotEmpty;
+}
+
 class AdminMenuBuilder {
+  /// Determina si [routePath] corresponde a la ruta activa actual [currentPath].
+  static bool isRouteActive(String routePath, String currentPath) {
+    if (routePath.isEmpty) return false;
+    if (currentPath == routePath) return true;
+    if (routePath == '/' &&
+        (currentPath == '/dashboard' || currentPath == '/')) {
+      return true;
+    }
+    if (routePath == '/catalog' &&
+        (currentPath == '/catalog' || currentPath.startsWith('/catalog/'))) {
+      return true;
+    }
+    if (routePath != '/' && currentPath.startsWith('$routePath/')) {
+      return true;
+    }
+    return false;
+  }
+
+  /// Construye el árbol completo de navegación para [AdminSidebar] y [AppDrawer].
+  static AdminNavigationMenu buildMenu({
+    required bool isAdmin,
+    required Set<String> permissions,
+    required bool loyaltyEnabled,
+  }) {
+    bool can(String perm) => isAdmin || permissions.contains(perm);
+    bool canAny(Iterable<String> checkPerms) =>
+        isAdmin || checkPerms.any(permissions.contains);
+
+    return AdminNavigationMenu(
+      canViewCatalog: canAny([
+        AppPermissions.productsView,
+        AppPermissions.inventoryView,
+      ]),
+      canViewOrders: canAny([AppPermissions.posView, AppPermissions.posSale]),
+      canViewSettings: can(AppPermissions.settingsView),
+      inventoryChildren: buildInventoryChildren(can),
+      purchasesChildren: buildPurchasesChildren(
+        isAdmin: isAdmin,
+        can: can,
+        canAny: canAny,
+      ),
+      customersChildren: buildCustomersChildren(
+        isAdmin: isAdmin,
+        canAny: canAny,
+      ),
+      mastersChildren: buildMastersChildren(isAdmin: isAdmin, canAny: canAny),
+      systemChildren: buildSystemChildren(
+        isAdmin: isAdmin,
+        can: can,
+        canAny: canAny,
+        loyaltyEnabled: loyaltyEnabled,
+      ),
+    );
+  }
+
   static List<AdminSidebarItem> buildInventoryChildren(
     bool Function(String) can,
   ) {

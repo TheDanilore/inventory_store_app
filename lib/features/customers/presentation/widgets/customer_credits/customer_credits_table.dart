@@ -31,6 +31,21 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
   final Set<Object> _selectedIds = {};
   String? _sortColumnId;
   bool _isSortAscending = true;
+  late List<CustomerCreditEntity> _sortedAccounts;
+
+  @override
+  void initState() {
+    super.initState();
+    _rebuildSortedAccounts();
+  }
+
+  @override
+  void didUpdateWidget(covariant CustomerCreditsTable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.accounts, widget.accounts)) {
+      _rebuildSortedAccounts();
+    }
+  }
 
   String _getInitials(String? name) {
     if (name == null || name.trim().isEmpty) return 'CL';
@@ -41,8 +56,11 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
     return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
   }
 
-  List<CustomerCreditEntity> _getSortedAccounts() {
-    if (_sortColumnId == null) return widget.accounts;
+  void _rebuildSortedAccounts() {
+    if (_sortColumnId == null) {
+      _sortedAccounts = widget.accounts;
+      return;
+    }
     final list = List<CustomerCreditEntity>.from(widget.accounts);
     list.sort((a, b) {
       int cmp = 0;
@@ -74,7 +92,7 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
       }
       return _isSortAscending ? cmp : -cmp;
     });
-    return list;
+    _sortedAccounts = list;
   }
 
   Widget _buildStatusChip(
@@ -221,10 +239,8 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
 
   @override
   Widget build(BuildContext context) {
-    final sortedAccounts = _getSortedAccounts();
-
     return AdminProTable<CustomerCreditEntity>(
-      items: sortedAccounts,
+      items: _sortedAccounts,
       itemId: (a) => a.id,
       selectedIds: _selectedIds,
       onSelectionChanged: (newSet) {
@@ -239,6 +255,7 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
         setState(() {
           _sortColumnId = colId;
           _isSortAscending = isAsc;
+          _rebuildSortedAccounts();
         });
       },
       paginationConfig: widget.paginationConfig,

@@ -14,14 +14,7 @@ import 'package:inventory_store_app/features/financial/domain/entities/financial
 class CustomerCreditPaymentSheet extends StatelessWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity account;
-  final Future<void> Function(
-    double amount,
-    String? accountId,
-    String? orderId,
-    String? notes,
-    String? shiftId,
-  )
-  onSavePayment;
+  final SaveCustomerPaymentCallback onSavePayment;
 
   const CustomerCreditPaymentSheet({
     super.key,
@@ -34,14 +27,7 @@ class CustomerCreditPaymentSheet extends StatelessWidget {
     BuildContext context, {
     required CustomerCreditEntity account,
     required VoidCallback onSaved,
-    required Future<void> Function(
-      double amount,
-      String? accountId,
-      String? orderId,
-      String? notes,
-      String? shiftId,
-    )
-    onSavePayment,
+    required SaveCustomerPaymentCallback onSavePayment,
   }) {
     final isMobile = MediaQuery.of(context).size.width < 600;
 
@@ -77,7 +63,7 @@ class CustomerCreditPaymentSheet extends StatelessWidget {
       create:
           (context) =>
               GetIt.I<RegisterPaymentCubit>()
-                ..loadInitialData(account.profileId),
+                ..loadInitialData(account.effectiveCustomerId),
       child: _RegisterPaymentModalView(
         account: account,
         onSaved: onSaved,
@@ -90,14 +76,7 @@ class CustomerCreditPaymentSheet extends StatelessWidget {
 class _RegisterPaymentModalView extends StatefulWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity account;
-  final Future<void> Function(
-    double amount,
-    String? accountId,
-    String? orderId,
-    String? notes,
-    String? shiftId,
-  )
-  onSavePayment;
+  final SaveCustomerPaymentCallback onSavePayment;
 
   const _RegisterPaymentModalView({
     required this.onSaved,
@@ -155,7 +134,7 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
         final bool cajaSinTurno =
             state.selectedAccount != null &&
             state.selectedAccount!.type == 'CAJA' &&
-            state.activeShift == null;
+            state.shiftStatus != CustomerPaymentShiftStatus.open;
 
         final isSubmitDisabled =
             state.isSaving ||
@@ -586,11 +565,87 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
               ),
           ],
 
-          // Alerta de Turno Abierto o Cerrado
+          // Alerta de Turno Abierto, Verificando, Error o Cerrado
           if (state.selectedAccount != null &&
               state.selectedAccount!.type == 'CAJA') ...[
             const SizedBox(height: 8),
-            if (state.activeShift != null)
+            if (state.shiftStatus == CustomerPaymentShiftStatus.loading)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Row(
+                  children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Verificando turno de caja...',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (state.shiftStatus == CustomerPaymentShiftStatus.error)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.wifi_off_rounded,
+                      size: 16,
+                      color: AppColors.warningDark,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        state.shiftErrorMessage ??
+                            'No se pudo validar el turno de caja.',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.warningDark,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed:
+                          () => cubit.checkActiveShift(
+                            state.selectedAccount!.id,
+                          ),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
+              )
+            else if (state.shiftStatus == CustomerPaymentShiftStatus.open &&
+                state.activeShift != null)
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,

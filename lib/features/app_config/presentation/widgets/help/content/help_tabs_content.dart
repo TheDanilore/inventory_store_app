@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/app_config/presentation/widgets/help/components/help_components.dart';
 import 'package:inventory_store_app/features/app_config/presentation/widgets/help/models/help_doc_models.dart';
 
+/// Catálogo estático e inmutable de documentación del Centro de Ayuda.
+/// Se construye una única vez en memoria (0 re-allocations al navegar).
 class HelpTabsContent {
   static const Color _green = Color(0xFF059669);
   static const Color _blue = Color(0xFF2563EB);
   static const Color _purple = Color(0xFF7C3AED);
 
-  static List<HelpTabModel> buildTabs() => [
+  static final List<HelpTabModel> tabs = List<HelpTabModel>.unmodifiable([
     _cajasTab(),
     _posTab(),
     _rolesTab(),
@@ -15,7 +17,9 @@ class HelpTabsContent {
     _financesTab(),
     _inventoryTab(),
     _shortcutsTab(),
-  ];
+  ]);
+
+  static List<HelpTabModel> buildTabs() => tabs;
 
   // ── TAB 1: CAJAS ──────────────────────────────────────────────────────────
   static HelpTabModel _cajasTab() {
@@ -24,7 +28,7 @@ class HelpTabsContent {
     const calloutBody =
         'Cada Almacén o Tienda física representa la sede central donde vive el inventario. Dentro de esa misma tienda física pueden operar múltiples Cajas o Mostradores (ej: Mostrador 1, Mostrador 2, Caja Rápida, etc.). Cada cajero opera en su respectiva terminal con su propio Turno de Caja independiente.';
 
-    return HelpTabModel(
+    return const HelpTabModel(
       label: 'Cajas y Mostradores',
       icon: Icons.point_of_sale_rounded,
       groups: [
@@ -144,7 +148,7 @@ class HelpTabsContent {
     const cTitle = 'Filosofía del POS: Velocidad Extrema y Teclado';
     const cBody =
         'El Punto de Venta está optimizado para operar en milisegundos con lectores de código de barras USB/Bluetooth o mediante teclado directo sin necesidad de usar el mouse.';
-    return HelpTabModel(
+    return const HelpTabModel(
       label: 'Punto de Venta (POS)',
       icon: Icons.storefront_rounded,
       groups: [
@@ -156,7 +160,7 @@ class HelpTabsContent {
                 title: cTitle,
                 content: cBody,
                 icon: Icons.bolt_rounded,
-                color: const Color(0xFF047857),
+                color: Color(0xFF047857),
               ),
             ),
           ],
@@ -258,7 +262,7 @@ class HelpTabsContent {
       label: 'Roles y Permisos',
       icon: Icons.shield_outlined,
       groups: [
-        HelpGroupModel(
+        const HelpGroupModel(
           items: [
             HelpItemModel(
               '$cTitle $cBody',
@@ -266,7 +270,7 @@ class HelpTabsContent {
                 title: cTitle,
                 content: cBody,
                 icon: Icons.admin_panel_settings_rounded,
-                color: const Color(0xFF6D28D9),
+                color: Color(0xFF6D28D9),
               ),
             ),
           ],
@@ -278,11 +282,11 @@ class HelpTabsContent {
           items: [
             HelpItemModel(
               [...headers, ...rows.expand((r) => r)].join(' '),
-              HelpComparisonTable(headers: headers, rows: rows),
+              const HelpComparisonTable(headers: headers, rows: rows),
             ),
           ],
         ),
-        HelpGroupModel(
+        const HelpGroupModel(
           title: 'Matriz de Roles Predefinidos en el Sistema',
           subtitle:
               'Puedes crear nuevos roles o ajustar los existentes en Configuración > Roles',
@@ -295,7 +299,7 @@ class HelpTabsContent {
                 code: 'admin',
                 desc:
                     'Acceso total e irrestricto. Puede configurar monedas, sucursales, asignar permisos, ver ganancias y anular operaciones.',
-                color: const Color(0xFFDC2626),
+                color: Color(0xFFDC2626),
                 icon: Icons.shield_rounded,
               ),
             ),
@@ -306,7 +310,7 @@ class HelpTabsContent {
                 code: 'cashier',
                 desc:
                     'Enfocado en POS. Abre/cierra turnos, registra cobros, emite tickets. Por seguridad, solo ingresa a su mostrador.',
-                color: const Color(0xFF0284C7),
+                color: Color(0xFF0284C7),
                 icon: Icons.point_of_sale_rounded,
               ),
             ),
@@ -317,7 +321,7 @@ class HelpTabsContent {
                 code: 'warehouse_keeper',
                 desc:
                     'Control de inventario, recepción de órdenes de compra, kardex, registro de lotes y fechas de vencimiento.',
-                color: const Color(0xFFD97706),
+                color: Color(0xFFD97706),
                 icon: Icons.inventory_2_rounded,
               ),
             ),
@@ -328,7 +332,7 @@ class HelpTabsContent {
                 code: 'employee',
                 desc:
                     'Atención al cliente, consulta de catálogo, precios y stock sin permisos de configuración administrativa.',
-                color: const Color(0xFF64748B),
+                color: Color(0xFF64748B),
                 icon: Icons.person_rounded,
               ),
             ),
@@ -343,7 +347,7 @@ class HelpTabsContent {
     const cTitle = 'Tipos de Comprobantes Emitidos';
     const cBody =
         'Cada venta genera un comprobante con serie y correlativo auditado. El detalle de la venta desglosa la Base Imponible (Op. Gravada) y el I.G.V. (18%).';
-    return HelpTabModel(
+    return const HelpTabModel(
       label: 'Comprobantes y SUNAT',
       icon: Icons.receipt_long_rounded,
       groups: [
@@ -355,7 +359,7 @@ class HelpTabsContent {
                 title: cTitle,
                 content: cBody,
                 icon: Icons.receipt_long_rounded,
-                color: const Color(0xFF0F766E),
+                color: Color(0xFF0F766E),
               ),
             ),
           ],
@@ -370,10 +374,10 @@ class HelpTabsContent {
                 title: 'Nota de Venta',
                 series: 'NV01-00000001',
                 badge: 'COMPROBANTE INTERNO',
-                color: const Color(0xFF047857),
+                color: Color(0xFF047857),
                 desc:
                     'Comprobante interno para mostrador. Descuenta existencias del almacén y registra el ingreso a caja sin requerir validación tributaria directa. Ideal para operaciones rápidas al público general.',
-                requirements: const [
+                requirements: [
                   'No requiere DNI ni RUC obligatorio',
                   'Descuenta inventario en tiempo real',
                   'Afecta caja y cuentas financieras',
@@ -386,10 +390,10 @@ class HelpTabsContent {
                 title: 'Boleta de Venta',
                 series: 'B001-00000001',
                 badge: 'CONSUMIDOR FINAL',
-                color: const Color(0xFF1D4ED8),
+                color: Color(0xFF1D4ED8),
                 desc:
                     'Comprobante legal para personas naturales. Desglosa Base Imponible e IGV del 18%. Se puede emitir con DNI del comprador o como Cliente Varios.',
-                requirements: const [
+                requirements: [
                   'DNI obligatorio para ventas mayores a montos de ley',
                   'Desglose de IGV 18% incluido en el total',
                 ],
@@ -401,10 +405,10 @@ class HelpTabsContent {
                 title: 'Factura Electrónica',
                 series: 'F001-00000001',
                 badge: 'CRÉDITO FISCAL',
-                color: const Color(0xFF7E22CE),
+                color: Color(0xFF7E22CE),
                 desc:
                     'Comprobante tributario para empresas. Otorga derecho a crédito fiscal y costo/gasto.',
-                requirements: const [
+                requirements: [
                   'RUC de 11 dígitos válido ante SUNAT',
                   'Razón Social completa',
                   'Dirección Fiscal obligatoria',
@@ -435,7 +439,7 @@ class HelpTabsContent {
 
   // ── TAB 5: FINANZAS ───────────────────────────────────────────────────────
   static HelpTabModel _financesTab() {
-    return HelpTabModel(
+    return const HelpTabModel(
       label: 'Finanzas y Pagos',
       icon: Icons.account_balance_wallet_outlined,
       groups: [
@@ -496,7 +500,7 @@ class HelpTabsContent {
     const cTitle = 'Control de Lotes con Fecha de Caducidad (FEFO / FIFO)';
     const cBody =
         'Para farmacias, insumos agrícolas, veterinaria o alimentos, cada producto puede registrar lotes con fecha de vencimiento. El sistema despacha automáticamente primero los lotes con vencimiento más próximo para evitar pérdidas.';
-    return HelpTabModel(
+    return const HelpTabModel(
       label: 'Stock y Lotes',
       icon: Icons.inventory_2_outlined,
       groups: [
@@ -508,7 +512,7 @@ class HelpTabsContent {
                 title: cTitle,
                 content: cBody,
                 icon: Icons.alarm_rounded,
-                color: const Color(0xFFD97706),
+                color: Color(0xFFD97706),
               ),
             ),
           ],
@@ -537,7 +541,7 @@ class HelpTabsContent {
                     'Cada unidad vendida, comprada o devuelta queda anotada con fecha, hora, documento y lote exacto en el Kardex.',
                   ),
                 ],
-                colors: const [
+                colors: [
                   Color(0xFFDC2626),
                   Color(0xFFD97706),
                   Color(0xFF2563EB),

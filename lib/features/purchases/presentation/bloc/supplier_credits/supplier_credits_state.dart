@@ -1,208 +1,113 @@
 import 'package:equatable/equatable.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 
-abstract class SupplierCreditsState extends Equatable {
-  const SupplierCreditsState();
+enum SupplierCreditsLoadStatus { initial, coldLoading, loaded, error }
 
-  @override
-  List<Object?> get props => [];
-}
+enum SupplierCreditMutationStatus { idle, submitting, success, failure }
 
-class SupplierCreditsInitial extends SupplierCreditsState {}
+class SupplierCreditsState extends Equatable {
+  static const int defaultPageSize = 15;
 
-class SupplierCreditsLoading extends SupplierCreditsState {
-  final List<SupplierCreditEntity> currentAccounts;
+  final SupplierCreditsLoadStatus status;
+  final List<SupplierCreditEntity> accounts;
+  final SupplierCreditStatsEntity stats;
   final String searchQuery;
   final bool withDebtOnly;
   final int currentPage;
+  final int pageSize;
   final int totalCount;
-  final Map<String, dynamic> stats;
+  final bool isRevalidating;
+  final bool isFromCache;
+  final Failure? loadFailure;
+  final SupplierCreditMutationStatus mutationStatus;
+  final String? mutationMessage;
+  final Failure? mutationFailure;
 
-  const SupplierCreditsLoading({
-    this.currentAccounts = const [],
+  const SupplierCreditsState({
+    this.status = SupplierCreditsLoadStatus.initial,
+    this.accounts = const [],
+    this.stats = const SupplierCreditStatsEntity.empty(),
     this.searchQuery = '',
     this.withDebtOnly = false,
     this.currentPage = 0,
+    this.pageSize = defaultPageSize,
     this.totalCount = 0,
-    this.stats = const {},
+    this.isRevalidating = false,
+    this.isFromCache = false,
+    this.loadFailure,
+    this.mutationStatus = SupplierCreditMutationStatus.idle,
+    this.mutationMessage,
+    this.mutationFailure,
   });
 
-  @override
-  List<Object?> get props => [
-    currentAccounts,
-    searchQuery,
-    withDebtOnly,
-    currentPage,
-    totalCount,
-    stats,
-  ];
-}
+  int get totalPages => totalCount <= 0 ? 1 : (totalCount / pageSize).ceil();
 
-class SupplierCreditsLoaded extends SupplierCreditsState {
-  final List<SupplierCreditEntity> accounts;
-  final String searchQuery;
-  final bool withDebtOnly;
-  final int currentPage;
-  final int totalCount;
-  final Map<String, dynamic> stats;
+  bool get isColdLoading =>
+      (status == SupplierCreditsLoadStatus.coldLoading ||
+          status == SupplierCreditsLoadStatus.initial) &&
+      accounts.isEmpty;
 
-  const SupplierCreditsLoaded({
-    required this.accounts,
-    required this.searchQuery,
-    required this.withDebtOnly,
-    required this.currentPage,
-    required this.totalCount,
-    required this.stats,
-  });
+  bool get hasData => accounts.isNotEmpty;
 
-  int get totalPages => totalCount == 0 ? 1 : (totalCount / 24).ceil();
-
-  SupplierCreditsLoaded copyWith({
+  SupplierCreditsState copyWith({
+    SupplierCreditsLoadStatus? status,
     List<SupplierCreditEntity>? accounts,
+    SupplierCreditStatsEntity? stats,
     String? searchQuery,
     bool? withDebtOnly,
     int? currentPage,
+    int? pageSize,
     int? totalCount,
-    Map<String, dynamic>? stats,
+    bool? isRevalidating,
+    bool? isFromCache,
+    Failure? loadFailure,
+    bool clearLoadFailure = false,
+    SupplierCreditMutationStatus? mutationStatus,
+    String? mutationMessage,
+    bool clearMutationMessage = false,
+    Failure? mutationFailure,
+    bool clearMutationFailure = false,
   }) {
-    return SupplierCreditsLoaded(
+    return SupplierCreditsState(
+      status: status ?? this.status,
       accounts: accounts ?? this.accounts,
+      stats: stats ?? this.stats,
       searchQuery: searchQuery ?? this.searchQuery,
       withDebtOnly: withDebtOnly ?? this.withDebtOnly,
       currentPage: currentPage ?? this.currentPage,
+      pageSize: pageSize ?? this.pageSize,
       totalCount: totalCount ?? this.totalCount,
-      stats: stats ?? this.stats,
+      isRevalidating: isRevalidating ?? this.isRevalidating,
+      isFromCache: isFromCache ?? this.isFromCache,
+      loadFailure: clearLoadFailure ? null : (loadFailure ?? this.loadFailure),
+      mutationStatus: mutationStatus ?? this.mutationStatus,
+      mutationMessage:
+          clearMutationMessage
+              ? null
+              : (mutationMessage ?? this.mutationMessage),
+      mutationFailure:
+          clearMutationFailure
+              ? null
+              : (mutationFailure ?? this.mutationFailure),
     );
   }
 
   @override
   List<Object?> get props => [
+    status,
     accounts,
+    stats,
     searchQuery,
     withDebtOnly,
     currentPage,
+    pageSize,
     totalCount,
-    stats,
-  ];
-}
-
-class SupplierCreditsError extends SupplierCreditsState {
-  final String message;
-  final List<SupplierCreditEntity> currentAccounts;
-  final String searchQuery;
-  final bool withDebtOnly;
-  final int currentPage;
-  final int totalCount;
-  final Map<String, dynamic> stats;
-
-  const SupplierCreditsError({
-    required this.message,
-    this.currentAccounts = const [],
-    this.searchQuery = '',
-    this.withDebtOnly = false,
-    this.currentPage = 0,
-    this.totalCount = 0,
-    this.stats = const {},
-  });
-
-  @override
-  List<Object?> get props => [
-    message,
-    currentAccounts,
-    searchQuery,
-    withDebtOnly,
-    currentPage,
-    totalCount,
-    stats,
-  ];
-}
-
-class SupplierCreditSaving extends SupplierCreditsState {
-  final List<SupplierCreditEntity> currentAccounts;
-  final String searchQuery;
-  final bool withDebtOnly;
-  final int currentPage;
-  final int totalCount;
-  final Map<String, dynamic> stats;
-
-  const SupplierCreditSaving({
-    required this.currentAccounts,
-    required this.searchQuery,
-    required this.withDebtOnly,
-    required this.currentPage,
-    required this.totalCount,
-    required this.stats,
-  });
-
-  @override
-  List<Object?> get props => [
-    currentAccounts,
-    searchQuery,
-    withDebtOnly,
-    currentPage,
-    totalCount,
-    stats,
-  ];
-}
-
-class SupplierCreditSaveSuccess extends SupplierCreditsState {
-  final List<SupplierCreditEntity> currentAccounts;
-  final String searchQuery;
-  final bool withDebtOnly;
-  final int currentPage;
-  final int totalCount;
-  final Map<String, dynamic> stats;
-  final String message;
-
-  const SupplierCreditSaveSuccess({
-    required this.currentAccounts,
-    required this.searchQuery,
-    required this.withDebtOnly,
-    required this.currentPage,
-    required this.totalCount,
-    required this.stats,
-    required this.message,
-  });
-
-  @override
-  List<Object?> get props => [
-    currentAccounts,
-    searchQuery,
-    withDebtOnly,
-    currentPage,
-    totalCount,
-    stats,
-    message,
-  ];
-}
-
-class SupplierCreditSaveError extends SupplierCreditsState {
-  final List<SupplierCreditEntity> currentAccounts;
-  final String searchQuery;
-  final bool withDebtOnly;
-  final int currentPage;
-  final int totalCount;
-  final Map<String, dynamic> stats;
-  final String message;
-
-  const SupplierCreditSaveError({
-    required this.currentAccounts,
-    required this.searchQuery,
-    required this.withDebtOnly,
-    required this.currentPage,
-    required this.totalCount,
-    required this.stats,
-    required this.message,
-  });
-
-  @override
-  List<Object?> get props => [
-    currentAccounts,
-    searchQuery,
-    withDebtOnly,
-    currentPage,
-    totalCount,
-    stats,
-    message,
+    isRevalidating,
+    isFromCache,
+    loadFailure,
+    mutationStatus,
+    mutationMessage,
+    mutationFailure,
   ];
 }

@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
 
 /// Envoltura global que provee el efecto "Circular Eclipse Wave" al cambiar de tema.
@@ -35,7 +36,9 @@ class ThemeCircularWave extends StatefulWidget {
       if (targetMode != null) {
         cubit.setThemeMode(targetMode);
       } else {
-        cubit.toggleTheme();
+        cubit.toggleTheme(
+          platformBrightness: MediaQuery.platformBrightnessOf(context),
+        );
       }
     }
   }
@@ -103,8 +106,9 @@ class ThemeCircularWaveState extends State<ThemeCircularWave>
 
     final cubit = context.read<ThemeCubit>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final platformBrightness = MediaQuery.platformBrightnessOf(context);
     final screenSize = MediaQuery.sizeOf(context);
-    final pixelRatio = MediaQuery.devicePixelRatioOf(context).clamp(1.0, 1.8);
+    final pixelRatio = MediaQuery.devicePixelRatioOf(context).clamp(0.75, 1.0);
 
     final boundary =
         _boundaryKey.currentContext?.findRenderObject()
@@ -113,7 +117,7 @@ class ThemeCircularWaveState extends State<ThemeCircularWave>
       if (targetMode != null) {
         cubit.setThemeMode(targetMode);
       } else {
-        cubit.toggleTheme();
+        cubit.toggleTheme(platformBrightness: platformBrightness);
       }
       return;
     }
@@ -124,7 +128,13 @@ class ThemeCircularWaveState extends State<ThemeCircularWave>
     ui.Image? captured;
     try {
       captured = await boundary.toImage(pixelRatio: pixelRatio);
-    } catch (_) {
+    } catch (e, st) {
+      LoggerService.w(
+        'No se pudo capturar snapshot de transición de tema',
+        tag: 'ThemeCircularWave',
+        error: e,
+        stackTrace: st,
+      );
       captured = null;
     }
 
@@ -134,7 +144,7 @@ class ThemeCircularWaveState extends State<ThemeCircularWave>
       if (targetMode != null) {
         cubit.setThemeMode(targetMode);
       } else {
-        cubit.toggleTheme();
+        cubit.toggleTheme(platformBrightness: platformBrightness);
       }
       return;
     }
@@ -150,7 +160,7 @@ class ThemeCircularWaveState extends State<ThemeCircularWave>
     if (targetMode != null) {
       cubit.setThemeMode(targetMode);
     } else {
-      cubit.toggleTheme();
+      cubit.toggleTheme(platformBrightness: platformBrightness);
     }
 
     // 2. Inicia la expansión en 360° desde el botón

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/widgets/app_keep_alive_tab.dart';
 import 'package:inventory_store_app/features/app_config/presentation/widgets/help/components/help_components.dart';
 import 'package:inventory_store_app/features/app_config/presentation/widgets/help/models/help_doc_models.dart';
 
-/// Vista de contenido para una pestaña de documentación del Centro de Ayuda.
-/// Mantiene vivo su estado y posición de scroll mediante [AppKeepAliveTab].
+/// Vista de contenido lazy para una pestaña de documentación del Centro de Ayuda.
+///
+/// Preserva la posición de scroll mediante [PageStorageKey] sin retener todos los
+/// subárboles de pestañas inactivas en RAM, optimizado para equipos de gama baja.
 class HelpContentTab extends StatelessWidget {
   final int index;
   final HelpTabModel tab;
@@ -13,102 +14,82 @@ class HelpContentTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppKeepAliveTab(
-      child: LayoutBuilder(
-        builder: (context, c) {
-          final pad = c.maxWidth >= 720 ? 24.0 : 16.0;
-          return ListView(
-            key: PageStorageKey<String>('help_tab_$index'),
-            padding: EdgeInsets.fromLTRB(pad, 24, pad, 48),
-            children: [
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1080),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: _buildGroupsWithGaps(tab.groups),
-                  ),
+    return LayoutBuilder(
+      builder: (context, c) {
+        final pad = c.maxWidth >= 720 ? 24.0 : 16.0;
+        final isWide = c.maxWidth >= 720;
+        return ListView.separated(
+          key: PageStorageKey<String>('help_tab_$index'),
+          padding: EdgeInsets.fromLTRB(pad, 24, pad, 48),
+          itemCount: tab.groups.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 32),
+          itemBuilder: (context, groupIndex) {
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1080),
+                child: _HelpGroupSection(
+                  group: tab.groups[groupIndex],
+                  isWide: isWide,
                 ),
               ),
-            ],
-          );
-        },
-      ),
+            );
+          },
+        );
+      },
     );
   }
+}
 
-  List<Widget> _buildGroupsWithGaps(List<HelpGroupModel> groups) {
-    final widgets = <Widget>[];
-    for (var i = 0; i < groups.length; i++) {
-      if (i > 0) widgets.add(const SizedBox(height: 32));
-      widgets.add(_buildGroup(groups[i]));
-    }
-    return widgets;
-  }
+class _HelpGroupSection extends StatelessWidget {
+  final HelpGroupModel group;
+  final bool isWide;
 
-  Widget _buildGroup(HelpGroupModel g) {
+  const _HelpGroupSection({required this.group, required this.isWide});
+
+  @override
+  Widget build(BuildContext context) {
+    final cols = isWide ? group.columns : 1;
+    final items = group.items;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (g.title != null) ...[
-          HelpSectionHeader(title: g.title!, subtitle: g.subtitle),
+        if (group.title != null) ...[
+          HelpSectionHeader(title: group.title!, subtitle: group.subtitle),
           const SizedBox(height: 14),
         ],
-        _buildGrid(g.items.map((e) => e.child).toList(), g.columns),
-      ],
-    );
-  }
-
-  Widget _buildGrid(List<Widget> items, int columns) {
-    if (items.length == 1 || columns == 1) {
-      return Column(
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            if (i > 0) const SizedBox(height: 12),
-            items[i],
-          ],
-        ],
-      );
-    }
-
-    return LayoutBuilder(
-      builder: (context, c) {
-        final cols = c.maxWidth >= 720 ? columns : 1;
-        if (cols == 1) {
-          return Column(
+        if (items.length == 1 || cols <= 1)
+          Column(
             children: [
               for (var i = 0; i < items.length; i++) ...[
                 if (i > 0) const SizedBox(height: 12),
-                items[i],
+                items[i].child,
               ],
             ],
-          );
-        }
-
-        final rows = <Widget>[];
-        for (var i = 0; i < items.length; i += cols) {
-          if (i > 0) rows.add(const SizedBox(height: 12));
-          rows.add(
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (var j = 0; j < cols; j++) ...[
-                    if (j > 0) const SizedBox(width: 12),
-                    Expanded(
-                      child:
-                          i + j < items.length
-                              ? items[i + j]
-                              : const SizedBox(),
-                    ),
+          )
+        else
+          Column(
+            children: [
+              for (var i = 0; i < items.length; i += cols) ...[
+                if (i > 0) const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var j = 0; j < cols; j++) ...[
+                      if (j > 0) const SizedBox(width: 12),
+                      Expanded(
+                        child:
+                            i + j < items.length
+                                ? items[i + j].child
+                                : const SizedBox.shrink(),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-            ),
-          );
-        }
-        return Column(children: rows);
-      },
+                ),
+              ],
+            ],
+          ),
+      ],
     );
   }
 }

@@ -121,6 +121,16 @@ class AppColors {
   static const Color info = Color(0xFF0EA5E9);
   static const Color infoLight = Color(0xFFE0F2FE);
 
+  // --- 4.1 ACENTOS Y SEMÁNTICOS MODO OSCURO (WCAG AA/AAA) ---
+  static const Color darkPrimary = Color(0xFF3B82F6); // Blue 500
+  static const Color darkPrimaryHover = Color(0xFF2563EB); // Blue 600
+  static const Color darkPrimarySoft = Color(0xFF60A5FA); // Blue 400
+  static const Color darkPrimaryContainer = Color(0xFF1E3A8A); // Blue 900
+  static const Color darkDangerText = Color(0xFFF87171); // Red 400 (7.2:1 sobre #111827)
+  static const Color darkSuccessText = Color(0xFF34D399); // Emerald 400
+  static const Color darkWarningText = Color(0xFFFBBF24); // Amber 400
+  static const Color darkInfoText = Color(0xFF38BDF8); // Sky 400
+
   // --- 5. COMPONENTES VISUALES Y SOMBRAS PREMIUM ---
   static const double radiusSm = 8.0;
   static const double radius = 16.0;
@@ -161,7 +171,7 @@ class AppColors {
       color: dark ? darkSurface : surface,
       borderRadius: BorderRadius.circular(radiusLg),
       border: Border.all(color: borderColor ?? (dark ? darkBorder : border)),
-      boxShadow: elevated ? (dark ? darkCardShadow() : cardShadow()) : null,
+      boxShadow: (elevated && !dark) ? cardShadow(opacity: 0.035) : null,
     );
   }
 
@@ -229,6 +239,76 @@ class AppColors {
   static Color dividerColor(BuildContext context) =>
       isDark(context) ? darkDivider : const Color(0xFFE2E8F0);
 
+  static Color brandPrimary(BuildContext context) =>
+      isDark(context) ? darkPrimary : primary;
+
+  static Color brandPrimarySoft(BuildContext context) =>
+      isDark(context) ? darkPrimarySoft : primary;
+
+  static Color surfHover(BuildContext context) =>
+      isDark(context) ? darkSurfaceHighlight : const Color(0xFFF1F5F9);
+
+  static Color surfSubtle(BuildContext context) =>
+      isDark(context) ? darkSurfaceElevated : background;
+
+  static Color inputFill(BuildContext context) =>
+      isDark(context) ? darkSurfaceElevated : background;
+
+  static Color inputFillReadOnly(BuildContext context) =>
+      isDark(context) ? darkSidebarBg : surfaceDark;
+
+  static Color glassSurface(BuildContext context) =>
+      isDark(context)
+          ? darkSurface.withValues(alpha: 0.78)
+          : surface.withValues(alpha: 0.82);
+
+  static Color glassBorder(BuildContext context) =>
+      isDark(context)
+          ? darkBorderSubtle.withValues(alpha: 0.7)
+          : border.withValues(alpha: 0.85);
+
+  static Color scrim(BuildContext context) =>
+      isDark(context)
+          ? Colors.black.withValues(alpha: 0.56)
+          : const Color(0xFF0F172A).withValues(alpha: 0.32);
+
+  static Color dangerText(BuildContext context) =>
+      isDark(context) ? darkDangerText : dangerDark;
+
+  static Color dangerBg(BuildContext context) =>
+      (isDark(context) ? darkDangerText : danger).withValues(
+        alpha: isDark(context) ? 0.14 : 0.08,
+      );
+
+  static Color dangerBorder(BuildContext context) =>
+      (isDark(context) ? darkDangerText : danger).withValues(
+        alpha: isDark(context) ? 0.28 : 0.20,
+      );
+
+  static Color successText(BuildContext context) =>
+      isDark(context) ? darkSuccessText : successDark;
+
+  static Color successBg(BuildContext context) =>
+      (isDark(context) ? darkSuccessText : success).withValues(
+        alpha: isDark(context) ? 0.14 : 0.10,
+      );
+
+  static Color successBorder(BuildContext context) =>
+      (isDark(context) ? darkSuccessText : success).withValues(
+        alpha: isDark(context) ? 0.32 : 0.25,
+      );
+
+  static Color warningText(BuildContext context) =>
+      isDark(context) ? darkWarningText : warningDark;
+
+  static Color infoText(BuildContext context) =>
+      isDark(context) ? darkInfoText : info;
+
+  static List<Color> profileHeroGradient(BuildContext context) =>
+      isDark(context)
+          ? const [Color(0xFF162033), Color(0xFF0F172A)]
+          : const [primary, Color(0xFF0F3460)];
+
   // --- 7. CONFIGURACIÓN DEL MATERIAL 3 ---
   static const ColorScheme colorScheme = ColorScheme.light(
     primary: primary,
@@ -244,10 +324,10 @@ class AppColors {
   );
 
   static const ColorScheme darkColorScheme = ColorScheme.dark(
-    primary: Color(0xFF3B82F6), // Blue 500
-    primaryContainer: Color(0xFF1E3A8A), // Blue 900
-    secondary: Color(0xFF10B981), // Emerald 500
-    secondaryContainer: Color(0xFF064E3B), // Emerald 900
+    primary: darkPrimary,
+    primaryContainer: darkPrimaryContainer,
+    secondary: success,
+    secondaryContainer: Color(0xFF064E3B),
     surface: darkSurface,
     surfaceContainerHighest: darkSurfaceElevated,
     error: error,

@@ -2,34 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/drawer/drawer_models.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/sidebar/admin_menu_builder.dart';
 
 /// Ítem unitario de navegación en el Drawer móvil / tablet.
 class DrawerItemTile extends StatelessWidget {
   final DrawerItem item;
+  final String? currentPath;
 
-  const DrawerItemTile({super.key, required this.item});
+  const DrawerItemTile({super.key, required this.item, this.currentPath});
 
-  static bool isItemActive(String routePath, String currentPath) {
-    if (routePath.isEmpty) return false;
-    if (currentPath == routePath) return true;
-    if (routePath == '/' &&
-        (currentPath == '/dashboard' || currentPath == '/')) {
-      return true;
-    }
-    if (routePath == '/catalog' &&
-        (currentPath == '/catalog' || currentPath.startsWith('/catalog/'))) {
-      return true;
-    }
-    if (routePath != '/' && currentPath.startsWith('$routePath/')) {
-      return true;
-    }
-    return false;
-  }
+  static bool isItemActive(String routePath, String currentPath) =>
+      AdminMenuBuilder.isRouteActive(routePath, currentPath);
 
   @override
   Widget build(BuildContext context) {
-    final currentPath = GoRouterState.of(context).uri.path;
-    final active = isItemActive(item.routePath, currentPath);
+    final resolvedPath =
+        currentPath ??
+        GoRouter.maybeOf(
+          context,
+        )?.routerDelegate.currentConfiguration.uri.path ??
+        '';
+    final active = isItemActive(item.routePath, resolvedPath);
     final isDark = AppColors.isDark(context);
 
     final itemBg =
@@ -73,12 +66,6 @@ class DrawerItemTile extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: itemIndicator,
                       borderRadius: BorderRadius.circular(3),
-                      boxShadow: [
-                        BoxShadow(
-                          color: itemIndicator.withValues(alpha: 0.4),
-                          blurRadius: 4,
-                        ),
-                      ],
                     ),
                   ),
                 Icon(item.icon, color: iconColor, size: 21),

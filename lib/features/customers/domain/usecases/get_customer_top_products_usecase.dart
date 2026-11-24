@@ -1,4 +1,6 @@
+import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customers_repository.dart';
 
@@ -8,7 +10,7 @@ class GetCustomerTopProductsUseCase {
 
   GetCustomerTopProductsUseCase(this.repository);
 
-  Future<List<TopProductEntity>> call(String customerId) async {
-    return await repository.getCustomerTopProducts(customerId);
+  Future<Either<Failure, List<TopProductEntity>>> call(String customerId) {
+    return repository.getCustomerTopProducts(customerId);
   }
 }

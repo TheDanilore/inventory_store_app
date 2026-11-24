@@ -1,9 +1,10 @@
-import 'package:injectable/injectable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/fetch_supplier_credits_usecase.dart';
-import 'package:inventory_store_app/features/purchases/domain/usecases/toggle_supplier_credit_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/register_supplier_payment_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/toggle_supplier_credit_usecase.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/supplier_credits/supplier_credits_state.dart';
 
 @injectable
@@ -12,105 +13,164 @@ class SupplierCreditsCubit extends Cubit<SupplierCreditsState> {
   final ToggleSupplierCreditUseCase toggleSupplierCreditUseCase;
   final RegisterSupplierPaymentUseCase registerSupplierPaymentUseCase;
 
-  static const int pageSize = 15;
+  static const int pageSize = SupplierCreditsState.defaultPageSize;
+
+  int _loadRequestId = 0;
 
   SupplierCreditsCubit({
     required this.fetchSupplierCreditsUseCase,
     required this.toggleSupplierCreditUseCase,
     required this.registerSupplierPaymentUseCase,
-  }) : super(SupplierCreditsInitial()) {
-    loadAccounts();
+  }) : super(_buildInitialState(fetchSupplierCreditsUseCase)) {
+    if (state.status == SupplierCreditsLoadStatus.coldLoading) {
+      loadAccounts();
+    } else if (state.isRevalidating) {
+      loadAccounts(forceRefresh: true, silent: true);
+    }
+  }
+
+  static SupplierCreditsState _buildInitialState(
+    FetchSupplierCreditsUseCase fetchUseCase,
+  ) {
+    final snapshot = fetchUseCase.getLatestSnapshot();
+    if (snapshot != null) {
+      return SupplierCreditsState(
+        status: SupplierCreditsLoadStatus.loaded,
+        accounts: snapshot.data.accounts,
+        stats: snapshot.data.stats ?? const SupplierCreditStatsEntity.empty(),
+        searchQuery: snapshot.searchQuery,
+        withDebtOnly: snapshot.withDebtOnly,
+        currentPage: snapshot.page,
+        pageSize: snapshot.pageSize,
+        totalCount: snapshot.data.totalCount,
+        isFromCache: true,
+        isRevalidating: snapshot.isStale,
+      );
+    }
+    return const SupplierCreditsState(
+      status: SupplierCreditsLoadStatus.coldLoading,
+    );
+  }
+
+  String formatFailureMessage(Failure failure, {required String fallback}) {
+    return switch (failure) {
+      NetworkFailure() => failure.message,
+      UnauthorizedFailure() => failure.message,
+      ValidationFailure() => failure.message,
+      NotFoundFailure() => failure.message,
+      ServerFailure() =>
+        failure.message.isNotEmpty ? failure.message : fallback,
+      CacheFailure() => failure.message,
+      StockFailure() => failure.message,
+      UnexpectedFailure() => fallback,
+    };
   }
 
   Future<void> loadAccounts({
     String? searchQuery,
     bool? withDebtOnly,
     int? page,
-    bool refresh = false,
+    bool forceRefresh = false,
+    bool silent = false,
   }) async {
-    final currentState = state;
-    String currentQuery = '';
-    bool currentWithDebt = false;
-    int currentPage = 0;
-    List<SupplierCreditEntity> currentAccounts = [];
-    int currentTotalCount = 0;
-    Map<String, dynamic> currentStats = {};
+    final nextQuery = (searchQuery ?? state.searchQuery).trim();
+    final nextWithDebt = withDebtOnly ?? state.withDebtOnly;
+    final nextPage = page ?? state.currentPage;
 
-    if (currentState is SupplierCreditsLoaded) {
-      currentQuery = searchQuery ?? currentState.searchQuery;
-      currentWithDebt = withDebtOnly ?? currentState.withDebtOnly;
-      currentPage = page ?? (refresh ? 0 : currentState.currentPage);
-      currentAccounts = refresh ? [] : currentState.accounts;
-      currentTotalCount = currentState.totalCount;
-      currentStats = currentState.stats;
-    } else if (currentState is SupplierCreditsLoading) {
-      currentQuery = searchQuery ?? currentState.searchQuery;
-      currentWithDebt = withDebtOnly ?? currentState.withDebtOnly;
-      currentPage = page ?? (refresh ? 0 : currentState.currentPage);
-      currentAccounts = refresh ? [] : currentState.currentAccounts;
-      currentTotalCount = currentState.totalCount;
-      currentStats = currentState.stats;
-    } else if (currentState is SupplierCreditsError) {
-      currentQuery = searchQuery ?? currentState.searchQuery;
-      currentWithDebt = withDebtOnly ?? currentState.withDebtOnly;
-      currentPage = page ?? (refresh ? 0 : currentState.currentPage);
-      currentAccounts = refresh ? [] : currentState.currentAccounts;
-      currentTotalCount = currentState.totalCount;
-      currentStats = currentState.stats;
-    } else {
-      currentQuery = searchQuery ?? '';
-      currentWithDebt = withDebtOnly ?? false;
-      currentPage = page ?? 0;
+    // 1. Consulta L1 en memoria si no se forzó refresh
+    if (!forceRefresh) {
+      final cached = fetchSupplierCreditsUseCase.getCachedPage(
+        page: nextPage,
+        pageSize: state.pageSize,
+        searchQuery: nextQuery,
+        withDebtOnly: nextWithDebt,
+      );
+
+      if (cached != null) {
+        emit(
+          state.copyWith(
+            status: SupplierCreditsLoadStatus.loaded,
+            accounts: cached.data.accounts,
+            stats: cached.data.stats ?? state.stats,
+            searchQuery: nextQuery,
+            withDebtOnly: nextWithDebt,
+            currentPage: nextPage,
+            totalCount: cached.data.totalCount,
+            isFromCache: true,
+            isRevalidating: cached.isStale,
+            clearLoadFailure: true,
+          ),
+        );
+
+        if (!cached.isStale) {
+          return;
+        }
+        // Si está stale, continúa debajo en background (SWR) sin mostrar Shimmer
+        silent = true;
+      }
     }
 
+    final requestId = ++_loadRequestId;
+    final hasVisibleData = state.accounts.isNotEmpty;
+
     emit(
-      SupplierCreditsLoading(
-        currentAccounts: currentAccounts,
-        searchQuery: currentQuery,
-        withDebtOnly: currentWithDebt,
-        currentPage: currentPage,
-        totalCount: currentTotalCount,
-        stats: currentStats,
+      state.copyWith(
+        status:
+            hasVisibleData
+                ? SupplierCreditsLoadStatus.loaded
+                : SupplierCreditsLoadStatus.coldLoading,
+        searchQuery: nextQuery,
+        withDebtOnly: nextWithDebt,
+        currentPage: nextPage,
+        isRevalidating: hasVisibleData || silent,
+        clearLoadFailure: true,
       ),
     );
 
     final result = await fetchSupplierCreditsUseCase(
-      page: currentPage,
-      pageSize: pageSize,
-      searchQuery: currentQuery,
-      withDebtOnly: currentWithDebt,
+      page: nextPage,
+      pageSize: state.pageSize,
+      searchQuery: nextQuery,
+      withDebtOnly: nextWithDebt,
+      forceRefresh: forceRefresh,
     );
+
+    if (isClosed || requestId != _loadRequestId) return;
 
     result.fold(
       (failure) {
-        String msg = 'Error al cargar cuentas.';
-        final errStr = failure.message.toLowerCase();
-        if (errStr.contains('socketexception') ||
-            errStr.contains('clientexception') ||
-            errStr.contains('failed host lookup')) {
-          msg = 'Sin conexión a internet.';
+        if (state.accounts.isNotEmpty) {
+          // Modo degradado: conserva los datos cacheados visibles
+          emit(
+            state.copyWith(
+              status: SupplierCreditsLoadStatus.loaded,
+              isRevalidating: false,
+              loadFailure: failure,
+            ),
+          );
+        } else {
+          emit(
+            state.copyWith(
+              status: SupplierCreditsLoadStatus.error,
+              isRevalidating: false,
+              loadFailure: failure,
+            ),
+          );
         }
-        emit(
-          SupplierCreditsError(
-            message: msg,
-            currentAccounts: currentAccounts,
-            searchQuery: currentQuery,
-            withDebtOnly: currentWithDebt,
-            currentPage: currentPage,
-            totalCount: currentTotalCount,
-            stats: currentStats,
-          ),
-        );
       },
       (data) {
         emit(
-          SupplierCreditsLoaded(
+          state.copyWith(
+            status: SupplierCreditsLoadStatus.loaded,
             accounts: data.accounts,
-            searchQuery: currentQuery,
-            withDebtOnly: currentWithDebt,
-            currentPage: currentPage,
-            totalCount: data.count,
-            stats: data.stats,
+            stats: data.stats ?? state.stats,
+            searchQuery: nextQuery,
+            withDebtOnly: nextWithDebt,
+            currentPage: nextPage,
+            totalCount: data.totalCount,
+            isRevalidating: false,
+            isFromCache: false,
+            clearLoadFailure: true,
           ),
         );
       },
@@ -118,167 +178,190 @@ class SupplierCreditsCubit extends Cubit<SupplierCreditsState> {
   }
 
   void setSearchQuery(String query) {
-    loadAccounts(searchQuery: query, page: 0, refresh: true);
+    final trimmed = query.trim();
+    if (trimmed == state.searchQuery &&
+        state.status == SupplierCreditsLoadStatus.loaded &&
+        !state.isRevalidating) {
+      return;
+    }
+    loadAccounts(searchQuery: trimmed, page: 0);
   }
 
   void setWithDebtOnly(bool val) {
-    loadAccounts(withDebtOnly: val, page: 0, refresh: true);
+    if (val == state.withDebtOnly &&
+        state.status == SupplierCreditsLoadStatus.loaded) {
+      return;
+    }
+    loadAccounts(withDebtOnly: val, page: 0);
   }
 
   void setPage(int page) {
+    if (page < 0 || page == state.currentPage) return;
     loadAccounts(page: page);
   }
 
+  void clearFilters() {
+    loadAccounts(searchQuery: '', withDebtOnly: false, page: 0);
+  }
+
   Future<void> toggleAccountStatus(SupplierCreditEntity account) async {
-    final currentState = state;
-    if (currentState is! SupplierCreditsLoaded) return;
+    if (state.mutationStatus == SupplierCreditMutationStatus.submitting) return;
+
+    emit(
+      state.copyWith(
+        mutationStatus: SupplierCreditMutationStatus.submitting,
+        clearMutationMessage: true,
+        clearMutationFailure: true,
+      ),
+    );
 
     final result = await toggleSupplierCreditUseCase(
       account.creditId,
       account.isActive,
     );
 
+    if (isClosed) return;
+
     result.fold(
       (failure) {
-        String msg = 'Error al cambiar estado.';
-        final errStr = failure.message.toLowerCase();
-        if (errStr.contains('socketexception') ||
-            errStr.contains('clientexception') ||
-            errStr.contains('failed host lookup')) {
-          msg = 'Sin conexión a internet.';
-        }
         emit(
-          SupplierCreditsError(
-            message: msg,
-            currentAccounts: currentState.accounts,
-            searchQuery: currentState.searchQuery,
-            withDebtOnly: currentState.withDebtOnly,
-            currentPage: currentState.currentPage,
-            totalCount: currentState.totalCount,
-            stats: currentState.stats,
+          state.copyWith(
+            mutationStatus: SupplierCreditMutationStatus.failure,
+            mutationMessage: formatFailureMessage(
+              failure,
+              fallback: 'Error al cambiar estado del crédito.',
+            ),
+            mutationFailure: failure,
           ),
         );
       },
-      (_) {
-        loadAccounts();
+      (updatedFromServer) {
+        final patched =
+            updatedFromServer ??
+            account.copyWith(isActive: !account.isActive);
+        final updatedAccounts = _replaceAccountInList(state.accounts, patched);
+        final successMsg =
+            patched.isActive ? 'Crédito reactivado.' : 'Crédito suspendido.';
+
+        emit(
+          state.copyWith(
+            accounts: updatedAccounts,
+            mutationStatus: SupplierCreditMutationStatus.success,
+            mutationMessage: successMsg,
+            clearMutationFailure: true,
+          ),
+        );
+
+        loadAccounts(forceRefresh: true, silent: true);
       },
     );
   }
 
   Future<void> registerPayment(RegisterSupplierPaymentParams params) async {
-    final currentState = state;
-    List<SupplierCreditEntity> currentList = [];
-    String query = '';
-    bool withDebt = false;
-    int page = 0;
-    int count = 0;
-    Map<String, dynamic> stats = {};
-
-    if (currentState is SupplierCreditsLoaded) {
-      currentList = currentState.accounts;
-      query = currentState.searchQuery;
-      withDebt = currentState.withDebtOnly;
-      page = currentState.currentPage;
-      count = currentState.totalCount;
-      stats = currentState.stats;
-    } else if (currentState is SupplierCreditsError) {
-      currentList = currentState.currentAccounts;
-      query = currentState.searchQuery;
-      withDebt = currentState.withDebtOnly;
-      page = currentState.currentPage;
-      count = currentState.totalCount;
-      stats = currentState.stats;
-    } else if (currentState is SupplierCreditSaveError) {
-      currentList = currentState.currentAccounts;
-      query = currentState.searchQuery;
-      withDebt = currentState.withDebtOnly;
-      page = currentState.currentPage;
-      count = currentState.totalCount;
-      stats = currentState.stats;
-    } else {
-      return;
-    }
+    if (state.mutationStatus == SupplierCreditMutationStatus.submitting) return;
 
     emit(
-      SupplierCreditSaving(
-        currentAccounts: currentList,
-        searchQuery: query,
-        withDebtOnly: withDebt,
-        currentPage: page,
-        totalCount: count,
-        stats: stats,
+      state.copyWith(
+        mutationStatus: SupplierCreditMutationStatus.submitting,
+        clearMutationMessage: true,
+        clearMutationFailure: true,
       ),
     );
 
     final result = await registerSupplierPaymentUseCase(params);
 
+    if (isClosed) return;
+
     result.fold(
       (failure) {
         emit(
-          SupplierCreditSaveError(
-            currentAccounts: currentList,
-            searchQuery: query,
-            withDebtOnly: withDebt,
-            currentPage: page,
-            totalCount: count,
-            stats: stats,
-            message: failure.message,
+          state.copyWith(
+            mutationStatus: SupplierCreditMutationStatus.failure,
+            mutationMessage: formatFailureMessage(
+              failure,
+              fallback: 'Error al registrar el pago.',
+            ),
+            mutationFailure: failure,
           ),
         );
       },
-      (_) {
-        List<SupplierCreditEntity> updatedList = List.from(currentList);
-        final index = updatedList.indexWhere(
-          (s) => s.creditId == params.creditId,
-        );
-
-        if (index >= 0) {
-          final old = updatedList[index];
-          final newDebt = (old.currentDebt - params.amount).clamp(
-            0.0,
-            double.infinity,
+      (updatedFromServer) {
+        var updatedAccounts = state.accounts;
+        if (updatedFromServer != null) {
+          updatedAccounts = _replaceAccountInList(
+            state.accounts,
+            updatedFromServer,
           );
-          updatedList[index] = old.copyWith(currentDebt: newDebt);
+        } else {
+          final index = state.accounts.indexWhere(
+            (s) => s.creditId == params.creditId,
+          );
+          if (index >= 0) {
+            final old = state.accounts[index];
+            final newDebt = (old.currentDebt - params.amount).clamp(
+              0.0,
+              double.infinity,
+            );
+            updatedAccounts = _replaceAccountInList(
+              state.accounts,
+              old.copyWith(currentDebt: newDebt),
+            );
+          }
         }
 
         emit(
-          SupplierCreditSaveSuccess(
-            currentAccounts: updatedList,
-            searchQuery: query,
-            withDebtOnly: withDebt,
-            currentPage: page,
-            totalCount: count,
-            stats: stats,
-            message:
+          state.copyWith(
+            accounts: updatedAccounts,
+            mutationStatus: SupplierCreditMutationStatus.success,
+            mutationMessage:
                 'Pago de S/ ${params.amount.toStringAsFixed(2)} registrado exitosamente.',
+            clearMutationFailure: true,
           ),
         );
 
-        emit(
-          SupplierCreditsLoaded(
-            accounts: updatedList,
-            searchQuery: query,
-            withDebtOnly: withDebt,
-            currentPage: page,
-            totalCount: count,
-            stats: stats,
-          ),
-        );
+        // Revalidación silenciosa para sincronizar KPIs y filtros sin Shimmer
+        loadAccounts(forceRefresh: true, silent: true);
       },
     );
   }
 
-  void clearError() {
-    final currentState = state;
-    if (currentState is SupplierCreditsError) {
+  void onAccountSaved(SupplierCreditEntity? updatedAccount) {
+    if (updatedAccount != null) {
+      final updatedAccounts = _replaceAccountInList(
+        state.accounts,
+        updatedAccount,
+      );
+      emit(state.copyWith(accounts: updatedAccounts));
+    }
+    loadAccounts(forceRefresh: true, silent: true);
+  }
+
+  List<SupplierCreditEntity> _replaceAccountInList(
+    List<SupplierCreditEntity> source,
+    SupplierCreditEntity updated,
+  ) {
+    final idx = source.indexWhere((a) => a.creditId == updated.creditId);
+    if (idx == -1) return source;
+    final next = List<SupplierCreditEntity>.from(source);
+    next[idx] = updated;
+    return List.unmodifiable(next);
+  }
+
+  void clearLoadFailure() {
+    if (state.loadFailure != null) {
+      emit(state.copyWith(clearLoadFailure: true));
+    }
+  }
+
+  void clearMutationFeedback() {
+    if (state.mutationStatus != SupplierCreditMutationStatus.idle ||
+        state.mutationMessage != null ||
+        state.mutationFailure != null) {
       emit(
-        SupplierCreditsLoaded(
-          accounts: currentState.currentAccounts,
-          searchQuery: currentState.searchQuery,
-          withDebtOnly: currentState.withDebtOnly,
-          currentPage: currentState.currentPage,
-          totalCount: currentState.totalCount,
-          stats: currentState.stats,
+        state.copyWith(
+          mutationStatus: SupplierCreditMutationStatus.idle,
+          clearMutationMessage: true,
+          clearMutationFailure: true,
         ),
       );
     }

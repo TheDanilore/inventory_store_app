@@ -84,22 +84,51 @@ class HelpShortcutRow extends StatelessWidget {
 
 /// Banner de estado del backend Supabase.
 class HelpStatusBanner extends StatelessWidget {
-  final bool reachable;
+  final bool? reachable;
+  final bool isOnline;
+  final bool isChecking;
 
-  const HelpStatusBanner({super.key, this.reachable = true});
+  const HelpStatusBanner({
+    super.key,
+    required this.reachable,
+    required this.isOnline,
+    this.isChecking = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final t = HelpThemeTokens.of(context);
-    final color = reachable ? AppColors.success : AppColors.error;
-    final title =
-        reachable
-            ? 'Servidor Supabase Cloud activo y sincronizado'
-            : 'Sin conexión a Supabase o red inaccesible';
-    final body =
-        reachable
-            ? 'Conexión segura con la nube PostgreSQL. Todos los datos, turnos y ventas están respaldados.'
-            : 'No se pudo verificar la conexión. Revisa tu red o credenciales de Supabase.';
+
+    final Color color;
+    final String title;
+    final String body;
+    final bool showPulseGlow;
+
+    if (!isOnline) {
+      color = AppColors.error;
+      title = 'Sin conexión a Internet';
+      body =
+          'El dispositivo no tiene acceso a red. Las guías locales siguen disponibles offline.';
+      showPulseGlow = false;
+    } else if (reachable == null && isChecking) {
+      color = AppColors.info;
+      title = 'Verificando conexión con Supabase Cloud…';
+      body =
+          'Comprobando disponibilidad de la base de datos PostgreSQL en segundo plano.';
+      showPulseGlow = false;
+    } else if (reachable == true) {
+      color = AppColors.success;
+      title = 'Servidor Supabase Cloud activo y sincronizado';
+      body =
+          'Conexión segura con la nube PostgreSQL. Todos los datos, turnos y ventas están respaldados.';
+      showPulseGlow = true;
+    } else {
+      color = AppColors.error;
+      title = 'Sin conexión a Supabase o servicio inaccesible';
+      body =
+          'No se pudo verificar la conexión con el servidor. Revisa tu red o credenciales.';
+      showPulseGlow = false;
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -117,7 +146,7 @@ class HelpStatusBanner extends StatelessWidget {
               color: color,
               shape: BoxShape.circle,
               boxShadow:
-                  reachable
+                  showPulseGlow
                       ? [
                         BoxShadow(
                           color: color.withValues(alpha: 0.35),

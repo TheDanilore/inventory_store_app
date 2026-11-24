@@ -1,138 +1,235 @@
-import 'dart:developer' as developer;
-import 'package:injectable/injectable.dart';
+import 'dart:async';
+import 'dart:io';
 import 'package:fpdart/fpdart.dart';
+import 'package:http/http.dart' show ClientException;
+import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/core/utils/friendly_error_message.dart';
+import 'package:inventory_store_app/features/purchases/data/cache/suppliers_lru_cache.dart';
+import 'package:inventory_store_app/features/purchases/data/datasources/suppliers_remote_datasource.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 import 'package:inventory_store_app/features/purchases/domain/repositories/suppliers_repository.dart';
-import 'package:inventory_store_app/features/purchases/data/models/supplier_model.dart';
 
 @LazySingleton(as: SuppliersRepository)
 class SuppliersRepositoryImpl implements SuppliersRepository {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final SuppliersRemoteDataSource _remoteDataSource;
+  final SuppliersLruCache _cache;
+
+  static const String _tag = 'SUPPLIERS_REPO';
+
+  SuppliersRepositoryImpl(this._remoteDataSource, this._cache);
+
+  Failure _mapFailure(Object error, StackTrace stackTrace, String context) {
+    LoggerService.e(
+      context,
+      tag: _tag,
+      error: error,
+      stackTrace: stackTrace,
+    );
+
+    if (error is SocketException ||
+        error is TimeoutException ||
+        error is ClientException) {
+      return const NetworkFailure();
+    }
+
+    if (error is AuthException) {
+      if (error.statusCode == '401' ||
+          error.message.toLowerCase().contains('unauthorized')) {
+        return const UnauthorizedFailure();
+      }
+      return ServerFailure(
+        message: FriendlyErrorMessage.format(error),
+        code: error.statusCode ?? 'AUTH_ERROR',
+      );
+    }
+
+    if (error is PostgrestException) {
+      final lower = error.message.toLowerCase();
+      if (error.code == '42501' || lower.contains('permiso')) {
+        return const UnauthorizedFailure();
+      }
+      if (error.code == '23505') {
+        return const ValidationFailure(
+          message: 'Ya existe un proveedor con ese número de RUC/ID fiscal.',
+          code: '23505',
+        );
+      }
+      if (error.code == 'P0001' || error.code == '23514') {
+        return ValidationFailure(
+          message: FriendlyErrorMessage.format(error),
+          code: error.code ?? 'VALIDATION_ERROR',
+        );
+      }
+      return ServerFailure(
+        message: FriendlyErrorMessage.format(error),
+        code: error.code ?? 'POSTGREST_ERROR',
+      );
+    }
+
+    final raw = error.toString().toLowerCase();
+    if (raw.contains('socketexception') ||
+        raw.contains('failed host lookup') ||
+        raw.contains('clientexception') ||
+        raw.contains('timed out')) {
+      return const NetworkFailure();
+    }
+
+    return Failure.from(error);
+  }
 
   @override
-  Future<Either<Failure, ({List<SupplierEntity> suppliers, int totalCount})>>
-  fetchSuppliers({
+  ({SuppliersPageEntity data, bool isStale})? getCachedSuppliersPage({
     required int page,
     required int pageSize,
     String searchQuery = '',
+    bool? filterIsActive,
+  }) {
+    final key = SuppliersLruCache.buildKey(
+      page: page,
+      pageSize: pageSize,
+      searchQuery: searchQuery,
+      filterIsActive: filterIsActive,
+    );
+    return _cache.getPage(key);
+  }
+
+  @override
+  ({
+    SuppliersPageEntity data,
+    String searchQuery,
+    bool? filterIsActive,
+    int page,
+    int pageSize,
+    bool isStale,
+  })?
+  getLatestCachedSnapshot() => _cache.getLatestSnapshot();
+
+  @override
+  void invalidateCache() => _cache.invalidateAll();
+
+  @override
+  Future<Either<Failure, SuppliersPageEntity>> fetchSuppliers({
+    required int page,
+    required int pageSize,
+    String searchQuery = '',
+    bool? filterIsActive,
+    bool forceRefresh = false,
   }) async {
-    try {
-      var query = _supabase
-          .from('suppliers')
-          .select(
-            'id, name, tax_id, contact_name, phone, email, address, is_active',
-          );
+    final key = SuppliersLruCache.buildKey(
+      page: page,
+      pageSize: pageSize,
+      searchQuery: searchQuery,
+      filterIsActive: filterIsActive,
+    );
 
-      final term = searchQuery.trim();
-      if (term.isNotEmpty) {
-        query = query.or(
-          'name.ilike.%$term%,tax_id.ilike.%$term%,contact_name.ilike.%$term%',
-        );
+    if (!forceRefresh) {
+      final cached = _cache.getPage(key);
+      if (cached != null && !cached.isStale) {
+        return Right(cached.data);
       }
+    }
 
-      final start = page * pageSize;
-      final end = start + pageSize - 1;
-
-      final response = await query
-          .order('name', ascending: true)
-          .range(start, end)
-          .count(CountOption.exact);
-
-      final totalCount = response.count;
-      final list =
-          (response.data as List)
-              .map((e) => SupplierModel.fromJson(e))
-              .toList();
-
-      return Right((suppliers: list, totalCount: totalCount));
-    } on PostgrestException catch (e, st) {
-      developer.log(
-        '[SuppliersRepositoryImpl] fetchSuppliers PostgrestException: ${e.message}',
-        name: 'SuppliersRepository',
-        error: e,
-        stackTrace: st,
+    try {
+      final validStats =
+          forceRefresh ? null : _cache.getValidStats(searchQuery);
+      final pageData = await _remoteDataSource.fetchSuppliersPage(
+        page: page,
+        pageSize: pageSize,
+        searchQuery: searchQuery,
+        filterIsActive: filterIsActive,
+        includeStats: validStats == null || forceRefresh,
       );
-      return Left(
-        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+
+      final hydrated =
+          pageData.stats == null && validStats != null
+              ? pageData.copyWith(stats: validStats)
+              : pageData;
+
+      _cache.putPage(
+        key: key,
+        data: hydrated,
+        searchQuery: searchQuery,
+        filterIsActive: filterIsActive,
+        page: page,
+        pageSize: pageSize,
       );
+
+      return Right(hydrated);
     } catch (e, st) {
-      developer.log(
-        '[SuppliersRepositoryImpl] fetchSuppliers Error: $e',
-        name: 'SuppliersRepository',
-        error: e,
-        stackTrace: st,
+      return Left(
+        _mapFailure(e, st, 'Error al obtener directorio de proveedores'),
       );
-      return Left(ServerFailure(message: 'Error inesperado: $e'));
     }
   }
 
   @override
   Future<Either<Failure, List<SupplierEntity>>> getActiveSuppliers() async {
+    final cached = _cache.getActiveSuppliers();
+    if (cached != null) {
+      return Right(cached);
+    }
+
     try {
-      final response = await _supabase
-          .from('suppliers')
-          .select(
-            'id, name, tax_id, contact_name, phone, email, address, is_active',
-          )
-          .eq('is_active', true)
-          .order('name');
-
-      final list =
-          (response as List).map((e) => SupplierModel.fromJson(e)).toList();
-
+      final list = await _remoteDataSource.getActiveSuppliers();
+      _cache.putActiveSuppliers(list);
       return Right(list);
-    } on PostgrestException catch (e, st) {
-      developer.log(
-        '[SuppliersRepositoryImpl] getActiveSuppliers PostgrestException: ${e.message}',
-        name: 'SuppliersRepository',
-        error: e,
-        stackTrace: st,
-      );
-      return Left(
-        ServerFailure(message: 'Error de base de datos: ${e.message}'),
-      );
     } catch (e, st) {
-      developer.log(
-        '[SuppliersRepositoryImpl] getActiveSuppliers Error: $e',
-        name: 'SuppliersRepository',
-        error: e,
-        stackTrace: st,
-      );
-      return Left(ServerFailure(message: 'Error inesperado: $e'));
+      return Left(_mapFailure(e, st, 'Error al obtener proveedores activos'));
     }
   }
 
   @override
-  Future<Either<Failure, void>> toggleSupplierStatus(
+  Future<Either<Failure, SupplierEntity?>> toggleSupplierStatus(
     String supplierId,
     bool currentStatus,
   ) async {
     try {
-      await _supabase
-          .from('suppliers')
-          .update({'is_active': !currentStatus})
-          .eq('id', supplierId);
-      return const Right(null);
-    } on PostgrestException catch (e, st) {
-      developer.log(
-        '[SuppliersRepositoryImpl] toggleSupplierStatus PostgrestException: ${e.message}',
-        name: 'SuppliersRepository',
-        error: e,
-        stackTrace: st,
+      final updated = await _remoteDataSource.toggleSupplierStatus(
+        supplierId,
+        currentStatus,
       );
-      return Left(
-        ServerFailure(message: 'Error de base de datos: ${e.message}'),
-      );
+      if (updated != null) {
+        _cache.patchSupplier(updated);
+      } else {
+        _cache.invalidateDirectory();
+      }
+      return Right(updated);
     } catch (e, st) {
-      developer.log(
-        '[SuppliersRepositoryImpl] toggleSupplierStatus Error: $e',
-        name: 'SuppliersRepository',
-        error: e,
-        stackTrace: st,
+      return Left(
+        _mapFailure(
+          e,
+          st,
+          'Error al alternar estado del proveedor $supplierId',
+        ),
       );
-      return Left(ServerFailure(message: 'Error inesperado: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<SupplierEntity>>> bulkToggleSuppliersStatus(
+    List<String> supplierIds,
+  ) async {
+    try {
+      final updatedList = await _remoteDataSource.bulkToggleSuppliersStatus(
+        supplierIds,
+      );
+      if (updatedList.isNotEmpty) {
+        _cache.patchSuppliers(updatedList);
+      } else {
+        _cache.invalidateDirectory();
+      }
+      return Right(updatedList);
+    } catch (e, st) {
+      return Left(
+        _mapFailure(
+          e,
+          st,
+          'Error al alternar estado masivo de proveedores',
+        ),
+      );
     }
   }
 
@@ -141,52 +238,11 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
     SupplierEntity supplier,
   ) async {
     try {
-      final model = SupplierModel(
-        id: '',
-        name: supplier.name,
-        taxId: supplier.taxId,
-        contactName: supplier.contactName,
-        phone: supplier.phone,
-        email: supplier.email,
-        address: supplier.address,
-        isActive: supplier.isActive,
-      );
-
-      final response =
-          await _supabase
-              .from('suppliers')
-              .insert(model.toJson())
-              .select(
-                'id, name, tax_id, contact_name, phone, email, address, is_active',
-              )
-              .single();
-
-      return Right(SupplierModel.fromJson(response));
-    } on PostgrestException catch (e, st) {
-      developer.log(
-        '[SuppliersRepositoryImpl] createSupplier PostgrestException: ${e.message}',
-        name: 'SuppliersRepository',
-        error: e,
-        stackTrace: st,
-      );
-      if (e.code == '23505') {
-        return const Left(
-          ValidationFailure(
-            message: 'Ya existe un proveedor con ese número de RUC/ID fiscal.',
-          ),
-        );
-      }
-      return Left(
-        ServerFailure(message: 'Error de base de datos: ${e.message}'),
-      );
+      final created = await _remoteDataSource.createSupplier(supplier);
+      _cache.invalidateDirectory();
+      return Right(created);
     } catch (e, st) {
-      developer.log(
-        '[SuppliersRepositoryImpl] createSupplier Error: $e',
-        name: 'SuppliersRepository',
-        error: e,
-        stackTrace: st,
-      );
-      return Left(ServerFailure(message: 'Error inesperado: $e'));
+      return Left(_mapFailure(e, st, 'Error al crear proveedor'));
     }
   }
 
@@ -195,53 +251,13 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
     SupplierEntity supplier,
   ) async {
     try {
-      final model = SupplierModel(
-        id: supplier.id,
-        name: supplier.name,
-        taxId: supplier.taxId,
-        contactName: supplier.contactName,
-        phone: supplier.phone,
-        email: supplier.email,
-        address: supplier.address,
-        isActive: supplier.isActive,
-      );
-
-      final response =
-          await _supabase
-              .from('suppliers')
-              .update(model.toJson())
-              .eq('id', supplier.id)
-              .select(
-                'id, name, tax_id, contact_name, phone, email, address, is_active',
-              )
-              .single();
-
-      return Right(SupplierModel.fromJson(response));
-    } on PostgrestException catch (e, st) {
-      developer.log(
-        '[SuppliersRepositoryImpl] updateSupplier PostgrestException: ${e.message}',
-        name: 'SuppliersRepository',
-        error: e,
-        stackTrace: st,
-      );
-      if (e.code == '23505') {
-        return const Left(
-          ValidationFailure(
-            message: 'Ya existe un proveedor con ese número de RUC/ID fiscal.',
-          ),
-        );
-      }
-      return Left(
-        ServerFailure(message: 'Error de base de datos: ${e.message}'),
-      );
+      final updated = await _remoteDataSource.updateSupplier(supplier);
+      _cache.patchSupplier(updated);
+      return Right(updated);
     } catch (e, st) {
-      developer.log(
-        '[SuppliersRepositoryImpl] updateSupplier Error: $e',
-        name: 'SuppliersRepository',
-        error: e,
-        stackTrace: st,
+      return Left(
+        _mapFailure(e, st, 'Error al actualizar proveedor ${supplier.id}'),
       );
-      return Left(ServerFailure(message: 'Error inesperado: $e'));
     }
   }
 }

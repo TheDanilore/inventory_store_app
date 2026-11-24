@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
@@ -16,6 +18,8 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
   final GetCustomerRecentOrdersUseCase _getRecentOrdersUseCase;
   final GetCustomerTopProductsUseCase _getTopProductsUseCase;
 
+  static const String _tag = 'CUSTOMER_DETAIL_CUBIT';
+
   CustomerDetailCubit(
     this._getCustomerDetailUseCase,
     this._updateCustomerUseCase,
@@ -24,7 +28,7 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
   ) : super(CustomerDetailInitial());
 
   void initWithCustomer(CustomerEntity customer) {
-    if (state is CustomerDetailInitial) {
+    if (state is CustomerDetailInitial && !isClosed) {
       emit(
         CustomerDetailLoaded(
           customer: customer,
@@ -37,35 +41,61 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
 
   Future<void> loadCustomer(String customerId) async {
     final previousState = state;
-    if (previousState is! CustomerDetailLoaded) {
+    if (previousState is! CustomerDetailLoaded && !isClosed) {
       emit(CustomerDetailLoading());
     }
-    try {
-      final results = await Future.wait([
-        _getCustomerDetailUseCase(customerId),
-        _getRecentOrdersUseCase(customerId),
-        _getTopProductsUseCase(customerId),
-      ]);
 
-      emit(
-        CustomerDetailLoaded(
-          customer: results[0] as CustomerEntity,
-          recentOrders: results[1] as List<RecentOrderEntity>,
-          topProducts: results[2] as List<TopProductEntity>,
-        ),
+    final (detailResult, ordersResult, productsResult) =
+        await (
+          _getCustomerDetailUseCase(customerId),
+          _getRecentOrdersUseCase(customerId),
+          _getTopProductsUseCase(customerId),
+        ).wait;
+
+    if (isClosed) return;
+
+    final orders = ordersResult.fold<List<RecentOrderEntity>>((failure) {
+      LoggerService.w(
+        'Error loading recent orders for $customerId: ${failure.message}',
+        tag: _tag,
       );
-    } catch (e, stackTrace) {
-      LoggerService.e(
-        'Error loading customer detail for $customerId',
-        error: e,
-        stackTrace: stackTrace,
+      return previousState is CustomerDetailLoaded
+          ? previousState.recentOrders
+          : const [];
+    }, identity);
+
+    final products = productsResult.fold<List<TopProductEntity>>((failure) {
+      LoggerService.w(
+        'Error loading top products for $customerId: ${failure.message}',
+        tag: _tag,
       );
-      if (previousState is CustomerDetailLoaded) {
-        emit(previousState);
-      } else {
-        emit(CustomerDetailError(e.toString()));
-      }
-    }
+      return previousState is CustomerDetailLoaded
+          ? previousState.topProducts
+          : const [];
+    }, identity);
+
+    detailResult.fold(
+      (failure) {
+        LoggerService.e(
+          'Error loading customer detail for $customerId: ${failure.message}',
+          tag: _tag,
+        );
+        if (previousState is CustomerDetailLoaded) {
+          emit(previousState);
+        } else {
+          emit(CustomerDetailError(failure.message));
+        }
+      },
+      (customer) {
+        emit(
+          CustomerDetailLoaded(
+            customer: customer,
+            recentOrders: orders,
+            topProducts: products,
+          ),
+        );
+      },
+    );
   }
 
   Future<void> updateCustomer({
@@ -77,32 +107,37 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
     bool? isActive,
   }) async {
     final previousState = state;
-    emit(CustomerDetailLoading());
-    try {
-      final updated = await _updateCustomerUseCase(
-        customerId: customerId,
-        fullName: fullName,
-        phone: phone,
-        documentNumber: documentNumber,
-        documentType: documentType,
-        isActive: isActive,
-      );
+    if (!isClosed) emit(CustomerDetailLoading());
 
-      if (previousState is CustomerDetailLoaded) {
-        emit(previousState.copyWith(customer: updated));
-      } else {
-        await loadCustomer(customerId);
-      }
-    } catch (e, stackTrace) {
-      LoggerService.e(
-        'Error updating customer $customerId',
-        error: e,
-        stackTrace: stackTrace,
-      );
-      emit(CustomerDetailError(e.toString()));
-      if (previousState is CustomerDetailLoaded) {
-        emit(previousState);
-      }
-    }
+    final Either<Failure, CustomerEntity> result = await _updateCustomerUseCase(
+      customerId: customerId,
+      fullName: fullName,
+      phone: phone,
+      documentNumber: documentNumber,
+      documentType: documentType,
+      isActive: isActive,
+    );
+
+    if (isClosed) return;
+
+    await result.fold(
+      (failure) async {
+        LoggerService.e(
+          'Error updating customer $customerId: ${failure.message}',
+          tag: _tag,
+        );
+        emit(CustomerDetailError(failure.message));
+        if (previousState is CustomerDetailLoaded) {
+          emit(previousState);
+        }
+      },
+      (updated) async {
+        if (previousState is CustomerDetailLoaded) {
+          emit(previousState.copyWith(customer: updated));
+        } else {
+          await loadCustomer(customerId);
+        }
+      },
+    );
   }
 }

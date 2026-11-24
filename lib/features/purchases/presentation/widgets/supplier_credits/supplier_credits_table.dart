@@ -7,7 +7,6 @@ import 'package:inventory_store_app/features/purchases/domain/entities/supplier_
 
 class SupplierCreditsTable extends StatefulWidget {
   final List<SupplierCreditEntity> accounts;
-  final SupplierCreditEntity? selectedAccount;
   final Function(SupplierCreditEntity) onSelectAccount;
   final Function(SupplierCreditEntity) onPay;
   final Function(SupplierCreditEntity) onViewHistory;
@@ -16,7 +15,6 @@ class SupplierCreditsTable extends StatefulWidget {
   const SupplierCreditsTable({
     super.key,
     required this.accounts,
-    this.selectedAccount,
     required this.onSelectAccount,
     required this.onPay,
     required this.onViewHistory,
@@ -28,9 +26,26 @@ class SupplierCreditsTable extends StatefulWidget {
 }
 
 class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
+  static final RegExp _thousandsRegExp = RegExp(r'\B(?=(\d{3})+(?!\d))');
+
   final Set<Object> _selectedIds = {};
   String? _sortColumnId;
   bool _isSortAscending = true;
+  late List<SupplierCreditEntity> _sortedAccounts;
+
+  @override
+  void initState() {
+    super.initState();
+    _sortedAccounts = _computeSortedAccounts();
+  }
+
+  @override
+  void didUpdateWidget(covariant SupplierCreditsTable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.accounts, widget.accounts)) {
+      _sortedAccounts = _computeSortedAccounts();
+    }
+  }
 
   Color _getDebtColor(double pct, bool isMaxedOut, double debt) {
     if (debt <= 0) return AppColors.textMuted;
@@ -48,10 +63,7 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
   /// 50000 -> "S/ 50,000.00"
   String _money(double v) {
     final parts = v.toStringAsFixed(2).split('.');
-    final intPart = parts[0].replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (_) => ',',
-    );
+    final intPart = parts[0].replaceAllMapped(_thousandsRegExp, (_) => ',');
     return 'S/ $intPart.${parts[1]}';
   }
 
@@ -64,7 +76,7 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
     );
   }
 
-  List<SupplierCreditEntity> _getSortedAccounts() {
+  List<SupplierCreditEntity> _computeSortedAccounts() {
     if (_sortColumnId == null) return widget.accounts;
     final list = List<SupplierCreditEntity>.from(widget.accounts);
     list.sort((a, b) {
@@ -98,16 +110,15 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
 
   @override
   Widget build(BuildContext context) {
-    final sortedList = _getSortedAccounts();
-
     return AdminProTable<SupplierCreditEntity>(
-      items: sortedList,
+      items: _sortedAccounts,
       itemId: (account) => account.creditId,
       selectedIds: _selectedIds,
       onSelectionChanged: (newSet) {
         setState(() {
-          _selectedIds.clear();
-          _selectedIds.addAll(newSet);
+          _selectedIds
+            ..clear()
+            ..addAll(newSet);
         });
       },
       sortColumnId: _sortColumnId,
@@ -116,6 +127,7 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
         setState(() {
           _sortColumnId = colId;
           _isSortAscending = isAsc;
+          _sortedAccounts = _computeSortedAccounts();
         });
       },
       paginationConfig: widget.paginationConfig,
@@ -142,7 +154,6 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
         ),
       ],
       columns: [
-        // 1. PROVEEDOR
         AdminTableColumn<SupplierCreditEntity>(
           id: 'supplier',
           label: 'Proveedor',
@@ -236,8 +247,6 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
             );
           },
         ),
-
-        // 2. LÍNEA CRÉDITO
         AdminTableColumn<SupplierCreditEntity>(
           id: 'creditLimit',
           label: 'Línea Crédito',
@@ -256,8 +265,6 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
             );
           },
         ),
-
-        // 3. DEUDA ACTUAL
         AdminTableColumn<SupplierCreditEntity>(
           id: 'currentDebt',
           label: 'Deuda Actual',
@@ -283,8 +290,6 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
             );
           },
         ),
-
-        // 4. DISPONIBLE
         AdminTableColumn<SupplierCreditEntity>(
           id: 'availableCredit',
           label: 'Disponible',
@@ -306,8 +311,6 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
             );
           },
         ),
-
-        // 5. USO DE LÍNEA
         AdminTableColumn<SupplierCreditEntity>(
           id: 'usage',
           label: 'Uso de Línea',
@@ -348,8 +351,6 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
             );
           },
         ),
-
-        // 6. ESTADO
         AdminTableColumn<SupplierCreditEntity>(
           id: 'status',
           label: 'Estado',
@@ -408,8 +409,6 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
             );
           },
         ),
-
-        // 7. ACCIONES
         AdminTableColumn<SupplierCreditEntity>(
           id: 'actions',
           label: 'Acciones',

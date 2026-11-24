@@ -87,6 +87,7 @@ class _CustomerCreditMovementsScreenContentState
     final cubit = context.read<CustomerCreditMovementsCubit>();
     final creditEntity = CustomerCreditEntity(
       id: widget.creditId,
+      customerRecordId: widget.customerId,
       profileId: widget.customerId,
       customerName: widget.customerName,
       currentDebt: cubit.state.currentDebt,
@@ -98,13 +99,21 @@ class _CustomerCreditMovementsScreenContentState
       context,
       account: creditEntity,
       onSaved: () => cubit.loadData(forceRefresh: true),
-      onSavePayment: (amount, accountId, orderId, notes, shiftId) async {
+      onSavePayment: (
+        amount,
+        accountId,
+        orderId,
+        notes,
+        shiftId,
+        idempotencyKey,
+      ) async {
         await cubit.registerPayment(
           amount: amount,
           accountId: accountId,
           orderId: orderId,
           notes: notes,
           shiftId: shiftId,
+          idempotencyKey: idempotencyKey,
         );
       },
     );

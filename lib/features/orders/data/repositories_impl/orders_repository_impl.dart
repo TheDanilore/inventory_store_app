@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show SocketException;
 
 import 'package:fpdart/fpdart.dart';
@@ -821,13 +822,23 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
   @override
   Stream<Either<Failure, int>> watchPendingOrdersCount() {
-    return _remoteDataSource
-        .watchPendingOrdersCount()
-        .map<Either<Failure, int>>((count) => Right(count))
-        .handleError((error) {
-          return Left<Failure, int>(
-            ServerFailure(message: 'Error en stream de órdenes: $error'),
+    return _remoteDataSource.watchPendingOrdersCount().transform(
+      StreamTransformer<int, Either<Failure, int>>.fromHandlers(
+        handleData: (count, sink) => sink.add(Right(count)),
+        handleError: (error, st, sink) {
+          LoggerService.w(
+            'Error en stream de órdenes pendientes: $error',
+            tag: 'OrdersRepository',
+            error: error,
+            stackTrace: st,
           );
-        });
+          sink.add(
+            Left<Failure, int>(
+              ServerFailure(message: 'Error en stream de órdenes: $error'),
+            ),
+          );
+        },
+      ),
+    );
   }
 }

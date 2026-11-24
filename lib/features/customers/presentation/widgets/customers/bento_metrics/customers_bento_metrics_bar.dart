@@ -5,7 +5,9 @@ import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_stats_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_stats_state.dart';
 
-/// Barra de métricas Bento KPI Fintech para el directorio de clientes
+/// Barra de métricas Bento KPI Fintech para el directorio de clientes.
+///
+/// Usa estado tipado y nunca muestra Shimmer cuando existen métricas en caché.
 class CustomersBentoMetricsBar extends StatelessWidget {
   final bool isMobile;
   final bool isTablet;
@@ -20,14 +22,55 @@ class CustomersBentoMetricsBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<CustomersStatsCubit, CustomersStatsState>(
       builder: (context, state) {
+        if (state is CustomersStatsError) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(16, isMobile ? 10 : 12, 16, 6),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.danger.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.danger.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.analytics_outlined,
+                    size: 18,
+                    color: AppColors.danger,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      state.message,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.danger,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed:
+                        () => context.read<CustomersStatsCubit>().loadStats(
+                          forceRefresh: true,
+                        ),
+                    child: const Text('Reintentar'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         final isLoading = state is CustomersStatsLoading;
-        final total =
-            state is CustomersStatsLoaded ? state.totalCustomersCount : 0;
-        final active =
-            state is CustomersStatsLoaded ? state.activeCustomersCount : 0;
-        final revenue =
-            state is CustomersStatsLoaded ? state.totalRevenue : 0.0;
-        final debt = state is CustomersStatsLoaded ? state.totalDebt : 0.0;
+        final loaded = state is CustomersStatsLoaded ? state : null;
+        final total = loaded?.totalCustomersCount ?? 0;
+        final active = loaded?.activeCustomersCount ?? 0;
+        final revenue = loaded?.totalRevenue ?? 0.0;
+        final debt = loaded?.totalDebt ?? 0.0;
         final activePct =
             total > 0 ? ((active / total) * 100).toStringAsFixed(0) : '0';
 

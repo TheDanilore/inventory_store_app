@@ -1,33 +1,55 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fpdart/fpdart.dart' show Either;
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
-import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit/customer_credit_list_cubit.dart';
-import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_cubit.dart';
-import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_state.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_usecase.dart';
 
 class CreditAccountSheet extends StatelessWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity? accountToEdit;
   final bool isDialog;
+  final Future<Either<Failure, CustomerCreditEntity>> Function(
+    String customerId,
+    double creditLimit,
+  )?
+  onCreateAccount;
+  final Future<Either<Failure, CustomerCreditEntity>> Function(
+    String creditId,
+    double newLimit,
+  )?
+  onUpdateLimit;
 
   const CreditAccountSheet({
     super.key,
     required this.onSaved,
     this.accountToEdit,
     this.isDialog = false,
+    this.onCreateAccount,
+    this.onUpdateLimit,
   });
 
   static Future<bool?> show(
     BuildContext context, {
     CustomerCreditEntity? accountToEdit,
     required VoidCallback onSaved,
+    Future<Either<Failure, CustomerCreditEntity>> Function(
+      String customerId,
+      double creditLimit,
+    )?
+    onCreateAccount,
+    Future<Either<Failure, CustomerCreditEntity>> Function(
+      String creditId,
+      double newLimit,
+    )?
+    onUpdateLimit,
   }) {
     return AdaptiveDetailSheet.show<bool>(
       context,
@@ -39,19 +61,20 @@ class CreditAccountSheet extends StatelessWidget {
             accountToEdit: accountToEdit,
             onSaved: onSaved,
             isDialog: AdaptiveDetailSheet.isSideSheet(sheetCtx),
+            onCreateAccount: onCreateAccount,
+            onUpdateLimit: onUpdateLimit,
           ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<CustomersCubit>(),
-      child: _CreditAccountSheetView(
-        onSaved: onSaved,
-        accountToEdit: accountToEdit,
-        isDialog: isDialog,
-      ),
+    return _CreditAccountSheetView(
+      onSaved: onSaved,
+      accountToEdit: accountToEdit,
+      isDialog: isDialog,
+      onCreateAccount: onCreateAccount,
+      onUpdateLimit: onUpdateLimit,
     );
   }
 }
@@ -60,11 +83,23 @@ class _CreditAccountSheetView extends StatefulWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity? accountToEdit;
   final bool isDialog;
+  final Future<Either<Failure, CustomerCreditEntity>> Function(
+    String customerId,
+    double creditLimit,
+  )?
+  onCreateAccount;
+  final Future<Either<Failure, CustomerCreditEntity>> Function(
+    String creditId,
+    double newLimit,
+  )?
+  onUpdateLimit;
 
   const _CreditAccountSheetView({
     required this.onSaved,
     this.accountToEdit,
     this.isDialog = false,
+    this.onCreateAccount,
+    this.onUpdateLimit,
   });
 
   @override
@@ -79,6 +114,10 @@ class _CreditAccountSheetViewState extends State<_CreditAccountSheetView> {
 
   bool _isSaving = false;
   bool _isUnlimited = true;
+  bool _isSearching = false;
+  String? _searchError;
+  int _searchSeq = 0;
+  List<CustomerEntity> _searchResults = const [];
   String? _selectedProfileId;
   String? _selectedProfileName;
 
@@ -88,7 +127,7 @@ class _CreditAccountSheetViewState extends State<_CreditAccountSheetView> {
   void initState() {
     super.initState();
     if (_isEditing) {
-      _selectedProfileId = widget.accountToEdit!.profileId;
+      _selectedProfileId = widget.accountToEdit!.effectiveCustomerId;
       _selectedProfileName = widget.accountToEdit!.customerName;
       _searchCtrl.text = _selectedProfileName ?? '';
       _isUnlimited = widget.accountToEdit!.isUnlimited;
@@ -113,10 +152,49 @@ class _CreditAccountSheetViewState extends State<_CreditAccountSheetView> {
         _selectedProfileName = null;
       });
     }
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(
-      const Duration(milliseconds: 400),
-      () => context.read<CustomersCubit>().search(query),
+    _debounce?.cancel();
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      _searchSeq++;
+      setState(() {
+        _isSearching = false;
+        _searchError = null;
+        _searchResults = const [];
+      });
+      return;
+    }
+
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      _performCustomerSearch(trimmed);
+    });
+  }
+
+  Future<void> _performCustomerSearch(String query) async {
+    final seq = ++_searchSeq;
+    if (!mounted) return;
+    setState(() {
+      _isSearching = true;
+      _searchError = null;
+    });
+
+    final result = await sl<SearchCustomersWithoutCreditUseCase>().call(
+      query,
+      limit: 8,
+    );
+
+    if (!mounted || seq != _searchSeq) return;
+
+    result.fold(
+      (failure) => setState(() {
+        _isSearching = false;
+        _searchError = failure.message;
+        _searchResults = const [];
+      }),
+      (customers) => setState(() {
+        _isSearching = false;
+        _searchError = null;
+        _searchResults = customers;
+      }),
     );
   }
 
@@ -165,16 +243,36 @@ class _CreditAccountSheetViewState extends State<_CreditAccountSheetView> {
     }
 
     setState(() => _isSaving = true);
-    try {
-      final cubit = context.read<CustomerCreditListCubit>();
+    final Either<Failure, CustomerCreditEntity> result =
+        _isEditing
+            ? (widget.onUpdateLimit != null
+                ? await widget.onUpdateLimit!(
+                  widget.accountToEdit!.id,
+                  limitVal,
+                )
+                : await sl<UpdateCreditLimitUseCase>().call(
+                  creditId: widget.accountToEdit!.id,
+                  newLimit: limitVal,
+                ))
+            : (widget.onCreateAccount != null
+                ? await widget.onCreateAccount!(_selectedProfileId!, limitVal)
+                : await sl<CreateCreditAccountUseCase>().call(
+                  customerId: _selectedProfileId!,
+                  creditLimit: limitVal,
+                ));
 
-      if (_isEditing) {
-        await cubit.updateCreditLimit(widget.accountToEdit!.id, limitVal);
-      } else {
-        await cubit.createCreditAccount(_selectedProfileId!, limitVal);
-      }
+    if (!mounted) return;
+    setState(() => _isSaving = false);
 
-      if (mounted) {
+    result.fold(
+      (failure) {
+        AppSnackbar.show(
+          context,
+          message: failure.message,
+          type: SnackbarType.error,
+        );
+      },
+      (_) {
         AppSnackbar.show(
           context,
           message:
@@ -184,19 +282,9 @@ class _CreditAccountSheetViewState extends State<_CreditAccountSheetView> {
           type: SnackbarType.success,
         );
         widget.onSaved();
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Error: $e',
-          type: SnackbarType.error,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
+        Navigator.pop(context, true);
+      },
+    );
   }
 
   @override
@@ -295,64 +383,69 @@ class _CreditAccountSheetViewState extends State<_CreditAccountSheetView> {
             ),
           ),
           if (!_isEditing && _selectedProfileId == null)
-            BlocBuilder<CustomersCubit, CustomersState>(
-              builder: (context, state) {
-                if (state is CustomersLoading) {
-                  return const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+            if (_isSearching)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              )
+            else if (_searchError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  _searchError!,
+                  style: const TextStyle(color: AppColors.danger, fontSize: 12),
+                ),
+              )
+            else if (_searchResults.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                constraints: const BoxConstraints(maxHeight: 160),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white,
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _searchResults.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final client = _searchResults[index];
+                    final trimmedName = client.fullName.trim();
+                    final initial =
+                        trimmedName.isNotEmpty
+                            ? trimmedName[0].toUpperCase()
+                            : '?';
+                    return ListTile(
+                      dense: true,
+                      leading: CircleAvatar(
+                        radius: 16,
+                        backgroundColor: AppColors.primaryLight,
+                        child: Text(
+                          initial,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.primaryDark,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
-                  );
-                } else if (state is CustomersLoaded &&
-                    state.customers.isNotEmpty) {
-                  return Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    constraints: const BoxConstraints(maxHeight: 160),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.border),
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.white,
-                    ),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: state.customers.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final client = state.customers[index];
-                        return ListTile(
-                          dense: true,
-                          leading: CircleAvatar(
-                            radius: 16,
-                            backgroundColor: AppColors.primaryLight,
-                            child: Text(
-                              client.fullName.substring(0, 1).toUpperCase(),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.primaryDark,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            client.fullName,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text('Doc: ${client.documentNumber}'),
-                          onTap:
-                              () => _selectClient(client.id, client.fullName),
-                        );
-                      },
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
+                      title: Text(
+                        client.fullName,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text('Doc: ${client.documentNumber ?? '—'}'),
+                      onTap: () => _selectClient(client.id, client.fullName),
+                    );
+                  },
+                ),
+              ),
           const SizedBox(height: 16),
           const Text(
             'Tipo de límite de crédito',

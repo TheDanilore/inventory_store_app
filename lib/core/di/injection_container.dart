@@ -3,6 +3,9 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/di/injection_container.config.dart';
 import 'package:inventory_store_app/core/localization/bloc/locale_cubit.dart';
 import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
+import 'package:inventory_store_app/features/app_config/data/repositories_impl/system_diagnostics_repository_impl.dart';
+import 'package:inventory_store_app/features/app_config/domain/repositories/system_diagnostics_repository.dart';
+import 'package:inventory_store_app/features/app_config/domain/usecases/get_system_diagnostics_uc.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/system_diagnostics_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/data/datasources/inventory_alert_source_impl.dart';
 import 'package:inventory_store_app/features/main_navigation/domain/entities/inventory_alert_rules.dart';
@@ -60,9 +63,19 @@ void initDI([SharedPreferences? prefs]) {
       ),
     );
   }
+  if (!sl.isRegistered<SystemDiagnosticsRepository>()) {
+    sl.registerLazySingleton<SystemDiagnosticsRepository>(
+      () => SystemDiagnosticsRepositoryImpl(sl<SupabaseClient>()),
+    );
+  }
+  if (!sl.isRegistered<GetSystemDiagnosticsUseCase>()) {
+    sl.registerLazySingleton<GetSystemDiagnosticsUseCase>(
+      () => GetSystemDiagnosticsUseCase(sl<SystemDiagnosticsRepository>()),
+    );
+  }
   if (!sl.isRegistered<SystemDiagnosticsCubit>()) {
     sl.registerLazySingleton<SystemDiagnosticsCubit>(
-      () => SystemDiagnosticsCubit(),
+      () => SystemDiagnosticsCubit(sl<GetSystemDiagnosticsUseCase>()),
     );
   }
 }

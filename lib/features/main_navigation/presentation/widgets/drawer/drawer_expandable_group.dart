@@ -4,11 +4,17 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/drawer/drawer_item_tile.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/drawer/drawer_models.dart';
 
-/// Grupo desplegable de opciones en el Drawer.
+/// Grupo desplegable de opciones en el Drawer con montaje condicional
+/// (no retiene subárboles cerrados en RAM).
 class DrawerExpandableGroup extends StatefulWidget {
   final DrawerItem item;
+  final String? currentPath;
 
-  const DrawerExpandableGroup({super.key, required this.item});
+  const DrawerExpandableGroup({
+    super.key,
+    required this.item,
+    this.currentPath,
+  });
 
   @override
   State<DrawerExpandableGroup> createState() => _DrawerExpandableGroupState();
@@ -31,12 +37,16 @@ class _DrawerExpandableGroupState extends State<DrawerExpandableGroup> {
       return const SizedBox.shrink();
     }
 
-    final currentPath = GoRouterState.of(context).uri.path;
+    final resolvedPath =
+        widget.currentPath ??
+        GoRouter.maybeOf(
+          context,
+        )?.routerDelegate.currentConfiguration.uri.path ??
+        '';
     final hasActiveChild = widget.item.children.any(
-      (sub) => DrawerItemTile.isItemActive(sub.routePath, currentPath),
+      (sub) => DrawerItemTile.isItemActive(sub.routePath, resolvedPath),
     );
 
-    // Permite que el grupo permanezca abierto si un hijo está activo o si el usuario lo abrió
     final isOpen =
         hasActiveChild ||
         DrawerNavigationMemory.expandedGroups.contains(widget.item.title);
@@ -94,14 +104,12 @@ class _DrawerExpandableGroupState extends State<DrawerExpandableGroup> {
                         ),
                       ),
                     ),
-                    AnimatedRotation(
-                      turns: isOpen ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: chevronColor,
-                        size: 20,
-                      ),
+                    Icon(
+                      isOpen
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      color: chevronColor,
+                      size: 20,
                     ),
                   ],
                 ),
@@ -109,14 +117,11 @@ class _DrawerExpandableGroupState extends State<DrawerExpandableGroup> {
             ),
           ),
         ),
-        AnimatedCrossFade(
-          duration: const Duration(milliseconds: 200),
-          crossFadeState:
-              isOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-          firstChild: const SizedBox.shrink(),
-          secondChild: _SubItemsPanel(items: widget.item.children),
-          sizeCurve: Curves.easeInOut,
-        ),
+        if (isOpen)
+          _SubItemsPanel(
+            items: widget.item.children,
+            currentPath: resolvedPath,
+          ),
       ],
     );
   }
@@ -124,8 +129,9 @@ class _DrawerExpandableGroupState extends State<DrawerExpandableGroup> {
 
 class _SubItemsPanel extends StatelessWidget {
   final List<DrawerSubItem> items;
+  final String currentPath;
 
-  const _SubItemsPanel({required this.items});
+  const _SubItemsPanel({required this.items, required this.currentPath});
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +148,10 @@ class _SubItemsPanel extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: items.map((sub) => _SubItemTile(item: sub)).toList(),
+        children: [
+          for (final sub in items)
+            _SubItemTile(item: sub, currentPath: currentPath),
+        ],
       ),
     );
   }
@@ -150,12 +159,12 @@ class _SubItemsPanel extends StatelessWidget {
 
 class _SubItemTile extends StatelessWidget {
   final DrawerSubItem item;
+  final String currentPath;
 
-  const _SubItemTile({required this.item});
+  const _SubItemTile({required this.item, required this.currentPath});
 
   @override
   Widget build(BuildContext context) {
-    final currentPath = GoRouterState.of(context).uri.path;
     final active = DrawerItemTile.isItemActive(item.routePath, currentPath);
     final isDark = AppColors.isDark(context);
 

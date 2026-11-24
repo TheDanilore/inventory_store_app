@@ -177,49 +177,44 @@ class HelpCallout extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(13),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(width: 4, color: color),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: color, width: 4)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                HelpIconTile(icon: icon, color: color, size: 40),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      HelpIconTile(icon: icon, color: color, size: 40),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            HelpText(
-                              title,
-                              style: TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                                color: t.tone(color),
-                                height: 1.3,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            HelpText(
-                              lead == null ? content : '$lead $content',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: t.body,
-                                height: 1.55,
-                              ),
-                            ),
-                          ],
+                      HelpText(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: t.tone(color),
+                          height: 1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      HelpText(
+                        lead == null ? content : '$lead $content',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: t.body,
+                          height: 1.55,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

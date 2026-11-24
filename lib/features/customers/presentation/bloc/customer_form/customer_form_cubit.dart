@@ -1,72 +1,88 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/customers/domain/usecases/customer_usecase.dart';
-import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_usecase.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/features/customers/data/cache/customers_lru_cache.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
-import 'package:inventory_store_app/core/errors/app_exception.dart';
+import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_usecase.dart';
+import 'package:inventory_store_app/features/customers/domain/usecases/customer_usecase.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_form/customer_form_state.dart';
 
 @injectable
 class CustomerFormCubit extends Cubit<CustomerFormState> {
   final SaveCustomerFullProfileUseCase _saveCustomerFullProfileUseCase;
   final GetCreditAccountByCustomerUseCase _getCreditAccountByCustomerUseCase;
+  final CustomersLruCache _cache;
 
-  /// L1 Cache en memoria para cuenta de crédito de clientes (Zero-Shimmer garantizado)
-  static final Map<String, CustomerCreditEntity> _creditCache = {};
+  static const String _tag = 'CUSTOMER_FORM_CUBIT';
 
   CustomerFormCubit(
     this._saveCustomerFullProfileUseCase,
     this._getCreditAccountByCustomerUseCase,
+    this._cache,
   ) : super(CustomerFormInitial());
 
-  /// Carga el crédito del cliente. Si [initialData] o caché L1 están disponibles,
-  /// emite [CustomerFormCreditLoaded] de inmediato en Frame 0 sin mostrar estados de carga.
+  /// Carga el crédito del cliente. Si [initialData] o caché L1 LRU están disponibles,
+  /// emite [CustomerFormCreditLoaded] de inmediato en Frame 0 (Zero-Shimmer).
   Future<void> loadCredit(
     String customerId, {
     CustomerCreditEntity? initialData,
   }) async {
-    if (initialData != null && !_creditCache.containsKey(customerId)) {
-      _creditCache[customerId] = initialData;
-    }
-
-    if (_creditCache.containsKey(customerId)) {
-      emit(CustomerFormCreditLoaded(_creditCache[customerId]));
-      // Revalidación silenciosa en background sin interrumpir UI ni mostrar spinner
+    final cached = _cache.getCredit(customerId);
+    if (cached != null) {
+      if (!isClosed) emit(CustomerFormCreditLoaded(cached));
       _fetchCreditInBackground(customerId);
       return;
     }
 
-    emit(CustomerFormCreditLoading());
-    try {
-      final account = await _getCreditAccountByCustomerUseCase(customerId);
-      if (account != null) {
-        _creditCache[customerId] = account;
-      }
-      emit(CustomerFormCreditLoaded(account));
-    } catch (e) {
-      if (e is AppException) {
-        emit(CustomerFormError(e.message));
-      } else {
-        emit(CustomerFormError(e.toString().replaceAll('Exception: ', '')));
-      }
+    if (initialData != null) {
+      _cache.putCredit(customerId, initialData);
+      if (!isClosed) emit(CustomerFormCreditLoaded(initialData));
+      _fetchCreditInBackground(customerId);
+      return;
     }
+
+    if (!isClosed) emit(CustomerFormCreditLoading());
+    final result = await _getCreditAccountByCustomerUseCase(customerId);
+    if (isClosed) return;
+
+    result.fold(
+      (failure) {
+        LoggerService.e(
+          'Error cargando cuenta de crédito en CustomerFormCubit: ${failure.message}',
+          tag: _tag,
+        );
+        emit(CustomerFormError(failure.message));
+      },
+      (account) {
+        if (account != null) {
+          _cache.putCredit(customerId, account);
+        }
+        emit(CustomerFormCreditLoaded(account));
+      },
+    );
   }
 
   Future<void> _fetchCreditInBackground(String customerId) async {
-    try {
-      final account = await _getCreditAccountByCustomerUseCase(customerId);
-      if (account != null && !isClosed) {
-        _creditCache[customerId] = account;
-        emit(CustomerFormCreditLoaded(account));
-      }
-    } catch (_) {
-      // Ignorar fallo de red silencioso si ya se cuenta con datos en caché
-    }
+    final result = await _getCreditAccountByCustomerUseCase(customerId);
+    if (isClosed) return;
+
+    result.fold(
+      (failure) => LoggerService.w(
+        'Fallo de revalidación de crédito en segundo plano para $customerId: ${failure.message}',
+        tag: _tag,
+      ),
+      (account) {
+        if (account != null) {
+          _cache.putCredit(customerId, account);
+          emit(CustomerFormCreditLoaded(account));
+        }
+      },
+    );
   }
 
-  /// Invalida manualmente la caché de crédito de un cliente específico
+  /// Invalida manualmente la caché de crédito de un cliente específico.
   void invalidateCreditCache(String customerId) {
-    _creditCache.remove(customerId);
+    _cache.invalidateCredit(customerId);
   }
 
   Future<void> save({
@@ -84,36 +100,40 @@ class CustomerFormCubit extends Cubit<CustomerFormState> {
     required bool creditIsActive,
     required double newCreditLimit,
   }) async {
-    emit(CustomerFormSaving());
-    try {
-      await _saveCustomerFullProfileUseCase(
-        customerId: customerId,
-        fullName: fullName,
-        phone: phone,
-        documentNumber: documentNumber,
-        documentType: documentType,
-        isActive: isActive,
-        walletAdjustDelta: walletAdjustDelta,
-        currentWalletBalance: currentWalletBalance,
-        hasCredit: hasCredit,
-        creditExistsInDb: creditExistsInDb,
-        creditId: creditId,
-        creditIsActive: creditIsActive,
-        newCreditLimit: newCreditLimit,
-      );
+    if (!isClosed) emit(CustomerFormSaving());
 
-      // Invalidar caché tras guardado exitoso para forzar sincronía
-      if (customerId != null) {
-        _creditCache.remove(customerId);
-      }
+    final result = await _saveCustomerFullProfileUseCase(
+      customerId: customerId,
+      fullName: fullName,
+      phone: phone,
+      documentNumber: documentNumber,
+      documentType: documentType,
+      isActive: isActive,
+      walletAdjustDelta: walletAdjustDelta,
+      currentWalletBalance: currentWalletBalance,
+      hasCredit: hasCredit,
+      creditExistsInDb: creditExistsInDb,
+      creditId: creditId,
+      creditIsActive: creditIsActive,
+      newCreditLimit: newCreditLimit,
+    );
 
-      emit(CustomerFormSuccess());
-    } catch (e) {
-      if (e is AppException) {
-        emit(CustomerFormError(e.message));
-      } else {
-        emit(CustomerFormError(e.toString().replaceAll('Exception: ', '')));
-      }
-    }
+    if (isClosed) return;
+
+    result.fold(
+      (failure) {
+        LoggerService.e(
+          'Error al guardar perfil de cliente: ${failure.message}',
+          tag: _tag,
+        );
+        emit(CustomerFormError(failure.message));
+      },
+      (_) {
+        if (customerId != null) {
+          _cache.invalidateCredit(customerId);
+        }
+        emit(CustomerFormSuccess());
+      },
+    );
   }
 }

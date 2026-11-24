@@ -60,3 +60,72 @@ class SupplierEntity extends Equatable {
     createdAt,
   ];
 }
+
+class SupplierStatsEntity extends Equatable {
+  final int totalSuppliers;
+  final int activeSuppliers;
+  final int inactiveSuppliers;
+  final int withTaxIdCount;
+
+  const SupplierStatsEntity({
+    this.totalSuppliers = 0,
+    this.activeSuppliers = 0,
+    this.inactiveSuppliers = 0,
+    this.withTaxIdCount = 0,
+  });
+
+  const SupplierStatsEntity.empty()
+    : totalSuppliers = 0,
+      activeSuppliers = 0,
+      inactiveSuppliers = 0,
+      withTaxIdCount = 0;
+
+  SupplierStatsEntity copyWith({
+    int? totalSuppliers,
+    int? activeSuppliers,
+    int? inactiveSuppliers,
+    int? withTaxIdCount,
+  }) {
+    return SupplierStatsEntity(
+      totalSuppliers: totalSuppliers ?? this.totalSuppliers,
+      activeSuppliers: activeSuppliers ?? this.activeSuppliers,
+      inactiveSuppliers: inactiveSuppliers ?? this.inactiveSuppliers,
+      withTaxIdCount: withTaxIdCount ?? this.withTaxIdCount,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    totalSuppliers,
+    activeSuppliers,
+    inactiveSuppliers,
+    withTaxIdCount,
+  ];
+}
+
+class SuppliersPageEntity extends Equatable {
+  final List<SupplierEntity> suppliers;
+  final int totalCount;
+  final SupplierStatsEntity? stats;
+
+  const SuppliersPageEntity({
+    required this.suppliers,
+    required this.totalCount,
+    this.stats,
+  });
+
+  SuppliersPageEntity copyWith({
+    List<SupplierEntity>? suppliers,
+    int? totalCount,
+    SupplierStatsEntity? stats,
+  }) {
+    return SuppliersPageEntity(
+      suppliers: suppliers ?? this.suppliers,
+      totalCount: totalCount ?? this.totalCount,
+      stats: stats ?? this.stats,
+    );
+  }
+
+  @override
+  List<Object?> get props => [suppliers, totalCount, stats];
+}

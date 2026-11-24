@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_usecase.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
@@ -148,7 +149,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
 
           final accountsResult = secondaryResults[0] as dynamic;
           final profileResult = secondaryResults[1] as dynamic;
-          final creditResult = secondaryResults[2] as dynamic;
+          final creditEither = secondaryResults[2] as dynamic;
 
           final accountsData = accountsResult.fold((l) {
             LoggerService.w(
@@ -173,11 +174,23 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
             );
           }
 
+          final CustomerCreditEntity? creditResult = creditEither?.fold(
+            (l) {
+              LoggerService.w(
+                'Error en crédito',
+                tag: 'ORDER_DETAIL_CUBIT',
+                error: l.message,
+              );
+              return null;
+            },
+            (r) => r as CustomerCreditEntity?,
+          );
+
           Map<String, dynamic>? creditInfoData;
           if (creditResult != null) {
             creditInfoData = {
               'id': creditResult.id,
-              'profile_id': creditResult.profileId,
+              'profile_id': creditResult.effectiveCustomerId,
               'credit_limit': creditResult.creditLimit,
               'current_debt': creditResult.currentDebt,
               'is_active': creditResult.isActive,
@@ -244,20 +257,29 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
 
     if (validId != null) {
       try {
-        final credit = await _creditAccountUc(validId);
-        if (credit != null && state.selectedCustomerId == validId) {
-          emit(
-            state.copyWith(
-              creditInfo: {
-                'id': credit.id,
-                'profile_id': credit.profileId,
-                'credit_limit': credit.creditLimit,
-                'current_debt': credit.currentDebt,
-                'is_active': credit.isActive,
-              },
-            ),
-          );
-        }
+        final creditRes = await _creditAccountUc(validId);
+        creditRes.fold(
+          (l) => LoggerService.w(
+            'Error obteniendo línea de crédito para cliente $validId',
+            tag: 'ORDER_DETAIL_CUBIT',
+            error: l.message,
+          ),
+          (credit) {
+            if (credit != null && state.selectedCustomerId == validId) {
+              emit(
+                state.copyWith(
+                  creditInfo: {
+                    'id': credit.id,
+                    'profile_id': credit.effectiveCustomerId,
+                    'credit_limit': credit.creditLimit,
+                    'current_debt': credit.currentDebt,
+                    'is_active': credit.isActive,
+                  },
+                ),
+              );
+            }
+          },
+        );
       } catch (e, st) {
         LoggerService.w(
           'Error obteniendo línea de crédito para cliente $validId',

@@ -1,393 +1,208 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
+import 'dart:io';
+import 'package:fpdart/fpdart.dart';
+import 'package:http/http.dart' show ClientException;
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/core/errors/app_exception.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/core/utils/friendly_error_message.dart';
+import 'package:inventory_store_app/features/customers/data/cache/customers_lru_cache.dart';
+import 'package:inventory_store_app/features/customers/data/datasources/customers_remote_datasource.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customers_global_stats_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customers_page_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customers_repository.dart';
 
-class _CustomersCacheEntry {
-  final List<CustomerEntity> data;
-  final DateTime timestamp;
-
-  _CustomersCacheEntry({required this.data, required this.timestamp});
-}
-
 @LazySingleton(as: CustomersRepository)
 class CustomersRepositoryImpl implements CustomersRepository {
-  final SupabaseClient _supabase;
+  final CustomersRemoteDataSource _remoteDataSource;
+  final CustomersLruCache _cache;
 
-  /// L1 In-Memory Cache para Directorio de Clientes (Zero-Shimmer garantizado)
-  static final Map<String, _CustomersCacheEntry> _customersCache = {};
-  static const Duration _customersCacheTtl = Duration(minutes: 5);
+  static const String _tag = 'CUSTOMERS_REPO';
 
-  /// L1 In-Memory Cache para Top Clientes (Zero-Shimmer garantizado)
-  static List<CustomerEntity>? _topCustomersCache;
-  static DateTime? _topCustomersCacheTime;
-  static const Duration _topCustomersCacheTtl = Duration(minutes: 5);
+  CustomersRepositoryImpl(this._remoteDataSource, this._cache);
 
-  /// Invalida toda la memoria caché L1 tras mutaciones
-  static void invalidateCustomersCache() {
-    _customersCache.clear();
-    _topCustomersCache = null;
+  Failure _mapFailure(Object error, StackTrace stackTrace, String context) {
+    LoggerService.e(context, tag: _tag, error: error, stackTrace: stackTrace);
+
+    if (error is SocketException ||
+        error is TimeoutException ||
+        error is ClientException) {
+      return const NetworkFailure();
+    }
+
+    if (error is AuthException) {
+      if (error.statusCode == '401' ||
+          error.message.toLowerCase().contains('unauthorized')) {
+        return const UnauthorizedFailure();
+      }
+      return ServerFailure(
+        message: FriendlyErrorMessage.format(error),
+        code: error.statusCode ?? 'AUTH_ERROR',
+      );
+    }
+
+    if (error is PostgrestException) {
+      final lower = error.message.toLowerCase();
+      if (error.code == '42501' || lower.contains('permiso')) {
+        return const UnauthorizedFailure();
+      }
+      if (error.code == '23505') {
+        return const ValidationFailure(
+          message: 'Ya existe un cliente registrado con este documento.',
+          code: '23505',
+        );
+      }
+      if (error.code == 'P0001' || error.code == '23514') {
+        return ValidationFailure(
+          message: FriendlyErrorMessage.format(error),
+          code: error.code ?? 'VALIDATION_ERROR',
+        );
+      }
+      if (error.code == 'P0002') {
+        return const NotFoundFailure(message: 'Cliente no encontrado.');
+      }
+      return ServerFailure(
+        message: FriendlyErrorMessage.format(error),
+        code: error.code ?? 'POSTGREST_ERROR',
+      );
+    }
+
+    final raw = error.toString().toLowerCase();
+    if (raw.contains('socketexception') ||
+        raw.contains('failed host lookup') ||
+        raw.contains('clientexception') ||
+        raw.contains('timed out')) {
+      return const NetworkFailure();
+    }
+
+    return Failure.from(error);
   }
 
-  CustomersRepositoryImpl() : _supabase = Supabase.instance.client;
+  @override
+  ({CustomersPageEntity data, bool isStale})? getCachedCustomersPage({
+    required int limit,
+    required int offset,
+    String? query,
+    bool showOnlyWithDebt = false,
+  }) {
+    return _cache.getPage(
+      query: query ?? '',
+      showOnlyWithDebt: showOnlyWithDebt,
+      offset: offset,
+      limit: limit,
+    );
+  }
 
   @override
-  Future<List<CustomerEntity>> getCustomers({
+  ({CustomersGlobalStatsEntity data, bool isStale})? getCachedGlobalStats() {
+    return _cache.getStats();
+  }
+
+  @override
+  ({List<CustomerEntity> data, bool isStale})? getCachedTopCustomers({
+    required int limit,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) {
+    return _cache.getTopCustomers(
+      limit: limit,
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+
+  @override
+  void invalidateCache() => _cache.invalidateAll();
+
+  @override
+  Future<Either<Failure, CustomersPageEntity>> getCustomers({
     required int limit,
     required int offset,
     String? query,
     bool showOnlyWithDebt = false,
     bool forceRefresh = false,
   }) async {
-    final cacheKey =
-        '${query?.trim().toLowerCase() ?? ''}|$showOnlyWithDebt|$offset|$limit';
+    final normalizedQuery = query?.trim() ?? '';
 
     if (!forceRefresh) {
-      final cached = _customersCache[cacheKey];
-      if (cached != null &&
-          DateTime.now().difference(cached.timestamp) < _customersCacheTtl) {
-        return cached.data;
+      final cached = _cache.getPage(
+        query: normalizedQuery,
+        showOnlyWithDebt: showOnlyWithDebt,
+        offset: offset,
+        limit: limit,
+      );
+      if (cached != null && !cached.isStale) {
+        return Right(cached.data);
       }
     }
 
     try {
-      dynamic queryBuilder = _supabase
-          .from('customers')
-          .select(
-            'id, full_name, email, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at, customer_credits:customer_credits!customer_credits_customer_record_id_fkey${showOnlyWithDebt ? "!inner" : ""}(id, current_debt, credit_limit, is_active)',
-          );
-
-      if (query != null && query.isNotEmpty) {
-        queryBuilder = queryBuilder.or(
-          'full_name.ilike.%$query%,document_number.ilike.%$query%,phone.ilike.%$query%',
-        );
-      }
-
-      if (showOnlyWithDebt) {
-        queryBuilder = queryBuilder.gt('customer_credits.current_debt', 0);
-      }
-
-      // Ordenar los más recientes primero, a menos que estemos buscando (relevancia)
-      if (query == null || query.isEmpty) {
-        queryBuilder = queryBuilder.order('created_at', ascending: false);
-      }
-
-      final res = await queryBuilder.range(offset, offset + limit - 1);
-
-      if (res.isEmpty) return [];
-
-      final cIds = res.map((e) => e['id'] as String).toList();
-
-      // Traer agregados de órdenes completadas y conteo de ubicaciones concurrentemente
-      final ordersFuture = _supabase
-          .from('orders')
-          .select('customer_record_id, total_amount')
-          .eq('status', 'COMPLETED')
-          .inFilter('customer_record_id', cIds);
-
-      final locFuture = _supabase
-          .from('customer_locations')
-          .select('customer_record_id')
-          .inFilter('customer_record_id', cIds);
-
-      final queryResults = await Future.wait([
-        ordersFuture,
-        locFuture.catchError((err, st) {
-          LoggerService.w(
-            'Aviso: no se pudieron cargar conteos de ubicación de clientes: $err',
-          );
-          return <Map<String, dynamic>>[];
-        }),
-      ]);
-
-      final ordersRes = queryResults[0] as List<dynamic>;
-      final locRes = queryResults[1] as List<dynamic>;
-
-      final locCounts = <String, int>{};
-      for (var row in locRes) {
-        final pid = row['customer_record_id'] as String?;
-        if (pid != null) {
-          locCounts[pid] = (locCounts[pid] ?? 0) + 1;
-        }
-      }
-
-      final results =
-          res.map<CustomerEntity>((json) {
-            final id = json['id'] as String;
-
-            double currentDebt = 0.0;
-            double creditLimit = 0.0;
-
-            if (json['customer_credits'] != null) {
-              final creditData = json['customer_credits'];
-              Map<String, dynamic>? creditObj;
-              if (creditData is Map<String, dynamic>) {
-                creditObj = creditData;
-              } else if (creditData is List && creditData.isNotEmpty) {
-                creditObj = creditData.first as Map<String, dynamic>?;
-              }
-              if (creditObj != null) {
-                currentDebt =
-                    (creditObj['current_debt'] as num?)?.toDouble() ?? 0.0;
-                creditLimit =
-                    (creditObj['credit_limit'] as num?)?.toDouble() ?? 0.0;
-              }
-            }
-
-            final customerOrders =
-                ordersRes.where((o) => o['customer_id'] == id).toList();
-            double totalSpent = 0.0;
-            for (var o in customerOrders) {
-              totalSpent += (o['total_amount'] as num?)?.toDouble() ?? 0.0;
-            }
-
-            return CustomerEntity(
-              id: id,
-              fullName: json['full_name'] as String? ?? 'Cliente',
-              phone: json['phone'] as String?,
-              documentNumber: json['document_number'] as String?,
-              documentType: json['document_type'] as String?,
-              avatarUrl: json['avatar_url'] as String?,
-              walletBalance:
-                  (json['wallet_balance'] as num?)?.toDouble() ?? 0.0,
-              isActive: json['is_active'] as bool? ?? true,
-              createdAt:
-                  json['created_at'] != null
-                      ? DateTime.parse(json['created_at'])
-                      : null,
-              currentDebt: currentDebt,
-              creditLimit: creditLimit,
-              totalRevenue: totalSpent,
-              orderCount: customerOrders.length,
-              locationsCount: locCounts[id] ?? 0,
-            );
-          }).toList();
-
-      // Guardar en caché L1
-      _customersCache[cacheKey] = _CustomersCacheEntry(
-        data: results,
-        timestamp: DateTime.now(),
+      final page = await _remoteDataSource.getCustomersPage(
+        limit: limit,
+        offset: offset,
+        query: normalizedQuery,
+        showOnlyWithDebt: showOnlyWithDebt,
       );
 
-      return results;
+      _cache.putPage(
+        query: normalizedQuery,
+        showOnlyWithDebt: showOnlyWithDebt,
+        offset: offset,
+        limit: limit,
+        data: page,
+      );
+
+      return Right(page);
     } catch (e, stack) {
-      LoggerService.e('Error en getCustomers', error: e, stackTrace: stack);
-      throw AppException(
-        message: 'Error al cargar la lista de clientes: $e',
-        originalError: e,
-      );
+      return Left(_mapFailure(e, stack, 'Error en getCustomers'));
     }
   }
 
   @override
-  Future<CustomerEntity> getCustomerDetail(String customerId) async {
+  Future<Either<Failure, CustomerEntity>> getCustomerDetail(
+    String customerId,
+  ) async {
     try {
-      final res =
-          await _supabase
-              .from('customers')
-              .select()
-              .eq('id', customerId)
-              .single();
-
-      final ordersRes = await _supabase
-          .from('orders')
-          .select('total_amount')
-          .eq('customer_record_id', customerId)
-          .eq('status', 'COMPLETED');
-
-      final creditRes =
-          await _supabase
-              .from('customer_credits')
-              .select('current_debt, credit_limit')
-              .eq('customer_record_id', customerId)
-              .maybeSingle();
-
-      double totalSpent = 0.0;
-      for (var row in ordersRes) {
-        totalSpent += (row['total_amount'] as num?)?.toDouble() ?? 0.0;
-      }
-
-      double currentDebt = 0.0;
-      double creditLimit = 0.0;
-      if (creditRes != null) {
-        currentDebt = (creditRes['current_debt'] as num?)?.toDouble() ?? 0.0;
-        creditLimit = (creditRes['credit_limit'] as num?)?.toDouble() ?? 0.0;
-      }
-
-      int locCount = 0;
-      try {
-        final locRes = await _supabase
-            .from('customer_locations')
-            .select('id')
-            .eq('customer_record_id', customerId);
-        locCount = (locRes as List).length;
-      } catch (_) {}
-
-      return CustomerEntity(
-        id: res['id'] as String,
-        fullName: res['full_name'] as String? ?? 'Cliente',
-        phone: res['phone'] as String?,
-        documentNumber: res['document_number'] as String?,
-        documentType: res['document_type'] as String?,
-        avatarUrl: res['avatar_url'] as String?,
-        walletBalance: (res['wallet_balance'] as num?)?.toDouble() ?? 0.0,
-        isActive: res['is_active'] as bool? ?? true,
-        createdAt:
-            res['created_at'] != null
-                ? DateTime.parse(res['created_at'])
-                : null,
-        currentDebt: currentDebt,
-        creditLimit: creditLimit,
-        totalRevenue: totalSpent,
-        orderCount: ordersRes.length,
-        locationsCount: locCount,
-      );
-    } catch (e, stackTrace) {
-      LoggerService.e(
-        'Error fetching customer detail for $customerId',
-        error: e,
-        stackTrace: stackTrace,
-      );
-      throw AppException(
-        message: 'Error al obtener detalle del cliente: ${e.toString()}',
-        originalError: e,
+      final detail = await _remoteDataSource.getCustomerDetail(customerId);
+      return Right(detail);
+    } catch (e, stack) {
+      return Left(
+        _mapFailure(
+          e,
+          stack,
+          'Error al obtener detalle de cliente $customerId',
+        ),
       );
     }
   }
 
   @override
-  Future<CustomerEntity> createCustomer({
+  Future<Either<Failure, CustomerEntity>> createCustomer({
     required String fullName,
     String? phone,
     String? documentNumber,
     String? documentType,
   }) async {
     try {
-      final cleanName = fullName.trim();
-      final cleanPhone =
-          (phone != null && phone.trim().isNotEmpty) ? phone.trim() : null;
-      final cleanDoc =
-          (documentNumber != null && documentNumber.trim().isNotEmpty)
-              ? documentNumber.trim()
-              : null;
-
-      // 1. Intentar primero con el RPC atómico transaccional
-      try {
-        final rpcResp = await _supabase.rpc(
-          'save_customer_full_profile_rpc',
-          params: {
-            'p_full_name': cleanName,
-            'p_phone': cleanPhone,
-            'p_document_number': cleanDoc,
-            'p_document_type': documentType ?? 'DNI',
-            'p_is_active': true,
-            'p_wallet_delta': 0,
-            'p_has_credit': true,
-            'p_credit_limit': 0.0, // 0.0 = Límite infinito por defecto
-          },
-        );
-        if (rpcResp != null && rpcResp['profile_id'] != null) {
-          final String newId = rpcResp['profile_id'] as String;
-          invalidateCustomersCache();
-          return await getCustomerDetail(newId);
-        }
-      } catch (rpcErr) {
-        LoggerService.w(
-          'save_customer_full_profile_rpc no disponible en createCustomer, usando fallback: $rpcErr',
-          tag: 'CUSTOMERS_REPO',
-        );
-        if (rpcErr is PostgrestException && rpcErr.code == '23505') {
-          throw AppException(
-            message: 'Ya existe un cliente con este documento o teléfono.',
-            originalError: rpcErr,
-          );
-        }
-      }
-
-      // 2. Fallback directo
-      final Map<String, dynamic> data = {
-        'full_name': cleanName,
-        'is_active': true,
-      };
-      if (cleanPhone != null) data['phone'] = cleanPhone;
-      if (cleanDoc != null) data['document_number'] = cleanDoc;
-      if (documentType != null) data['document_type'] = documentType;
-
-      final res =
-          await _supabase.from('profiles').insert(data).select().single();
-      final profileId = res['id'] as String;
-
-      // Asegurar línea de crédito activa por defecto (límite 0.0 = infinito)
-      try {
-        await _supabase.from('customer_credits').insert({
-          'profile_id': profileId,
-          'credit_limit': 0.0,
-          'current_debt': 0.0,
-          'is_active': true,
-        });
-      } catch (creditErr) {
-        LoggerService.w(
-          'No se pudo inicializar customer_credits en createCustomer fallback: $creditErr',
-          tag: 'CUSTOMERS_REPO',
-        );
-      }
-
-      invalidateCustomersCache();
-      return CustomerEntity(
-        id: profileId,
-        fullName: res['full_name'] as String? ?? 'Cliente',
-        phone: res['phone'] as String?,
-        documentNumber: res['document_number'] as String?,
-        documentType: res['document_type'] as String?,
-        avatarUrl: res['avatar_url'] as String?,
-        walletBalance: (res['wallet_balance'] as num?)?.toDouble() ?? 0.0,
-        isActive: res['is_active'] as bool? ?? true,
-        createdAt:
-            res['created_at'] != null
-                ? DateTime.parse(res['created_at'])
-                : null,
-        currentDebt: 0.0,
-        creditLimit: 0.0,
+      final created = await _remoteDataSource.createCustomer(
+        fullName: fullName,
+        phone: phone,
+        documentNumber: documentNumber,
+        documentType: documentType,
       );
-    } on PostgrestException catch (e, st) {
-      LoggerService.e(
-        'PostgrestException en createCustomer: ${e.message} (code: ${e.code})',
-        error: e,
-        stackTrace: st,
-      );
-      if (e.code == '23505') {
-        throw AppException(
-          message: 'Ya existe un cliente con este documento o teléfono.',
-          originalError: e,
-        );
-      }
-      if (e.code == '42501') {
-        throw AppException(
-          message:
-              'Permiso denegado por políticas de seguridad (RLS). Ejecute la migración SQL.',
-          originalError: e,
-        );
-      }
-      throw AppException(
-        message: 'Error al registrar cliente: ${e.message}',
-        originalError: e,
-      );
-    } catch (e, st) {
-      LoggerService.e('Error en createCustomer', error: e, stackTrace: st);
-      if (e is AppException) rethrow;
-      throw AppException(
-        message: 'Error al registrar cliente: ${e.toString()}',
-        originalError: e,
-      );
+      _cache.invalidateAll();
+      return Right(created);
+    } catch (e, stack) {
+      return Left(_mapFailure(e, stack, 'Error en createCustomer'));
     }
   }
 
   @override
-  Future<CustomerEntity> updateCustomer({
+  Future<Either<Failure, CustomerEntity>> updateCustomer({
     required String customerId,
     required String fullName,
     String? phone,
@@ -395,41 +210,24 @@ class CustomersRepositoryImpl implements CustomersRepository {
     String? documentType,
     bool? isActive,
   }) async {
-    final Map<String, dynamic> data = {'full_name': fullName.trim()};
-    if (phone != null) {
-      data['phone'] = phone.trim().isEmpty ? null : phone.trim();
+    try {
+      final updated = await _remoteDataSource.updateCustomer(
+        customerId: customerId,
+        fullName: fullName,
+        phone: phone,
+        documentNumber: documentNumber,
+        documentType: documentType,
+        isActive: isActive,
+      );
+      _cache.invalidateAll();
+      return Right(updated);
+    } catch (e, stack) {
+      return Left(_mapFailure(e, stack, 'Error en updateCustomer $customerId'));
     }
-    if (documentNumber != null) {
-      data['document_number'] =
-          documentNumber.trim().isEmpty ? null : documentNumber.trim();
-    }
-    if (documentType != null) data['document_type'] = documentType;
-    if (isActive != null) data['is_active'] = isActive;
-
-    final res =
-        await _supabase
-            .from('profiles')
-            .update(data)
-            .eq('id', customerId)
-            .select()
-            .single();
-    invalidateCustomersCache();
-    return CustomerEntity(
-      id: res['id'] as String,
-      fullName: res['full_name'] as String? ?? 'Cliente',
-      phone: res['phone'] as String?,
-      documentNumber: res['document_number'] as String?,
-      documentType: res['document_type'] as String?,
-      avatarUrl: res['avatar_url'] as String?,
-      walletBalance: (res['wallet_balance'] as num?)?.toDouble() ?? 0.0,
-      isActive: res['is_active'] as bool? ?? true,
-      createdAt:
-          res['created_at'] != null ? DateTime.parse(res['created_at']) : null,
-    );
   }
 
   @override
-  Future<void> saveCustomerFullProfile({
+  Future<Either<Failure, void>> saveCustomerFullProfile({
     String? customerId,
     required String fullName,
     String? phone,
@@ -444,607 +242,134 @@ class CustomersRepositoryImpl implements CustomersRepository {
     required bool creditIsActive,
     required double newCreditLimit,
   }) async {
-    final cleanName = fullName.trim();
-    final cleanPhone =
-        (phone != null && phone.trim().isNotEmpty) ? phone.trim() : null;
-    final cleanDoc =
-        (documentNumber != null && documentNumber.trim().isNotEmpty)
-            ? documentNumber.trim()
-            : null;
-
-    // 1. Intentar primero con el RPC atómico transaccional
     try {
-      final rpcParams = {
-        'p_customer_id': customerId,
-        'p_full_name': cleanName,
-        'p_phone': cleanPhone,
-        'p_document_number': cleanDoc,
-        'p_document_type': documentType ?? 'DNI',
-        'p_is_active': isActive,
-        'p_wallet_delta': walletAdjustDelta,
-        'p_has_credit': hasCredit,
-        'p_credit_limit': newCreditLimit,
-      };
-
-      final rpcRes = await _supabase.rpc(
-        'save_customer_full_profile_rpc',
-        params: rpcParams,
+      await _remoteDataSource.saveCustomerFullProfile(
+        customerId: customerId,
+        fullName: fullName,
+        phone: phone,
+        documentNumber: documentNumber,
+        documentType: documentType,
+        isActive: isActive,
+        walletAdjustDelta: walletAdjustDelta,
+        currentWalletBalance: currentWalletBalance,
+        hasCredit: hasCredit,
+        creditExistsInDb: creditExistsInDb,
+        creditId: creditId,
+        creditIsActive: creditIsActive,
+        newCreditLimit: newCreditLimit,
       );
-      if (rpcRes != null) {
-        LoggerService.i(
-          'save_customer_full_profile_rpc ejecutado exitosamente',
-          tag: 'CUSTOMERS_REPO',
-        );
-        return;
-      }
-    } catch (rpcErr) {
-      LoggerService.w(
-        'save_customer_full_profile_rpc no disponible o falló, ejecutando fallback: $rpcErr',
-        tag: 'CUSTOMERS_REPO',
-      );
-      if (rpcErr is PostgrestException && rpcErr.code == '23505') {
-        throw AppException(
-          message: 'Ya existe un cliente con este documento o teléfono.',
-          originalError: rpcErr,
-        );
-      }
-    }
-
-    // 2. Fallback en cliente resiliente
-    try {
-      String? adminProfileId;
-      final authUserId = _supabase.auth.currentUser?.id;
-      if (authUserId != null) {
-        final adminResp =
-            await _supabase
-                .from('profiles')
-                .select('id')
-                .or('auth_user_id.eq.$authUserId,id.eq.$authUserId')
-                .maybeSingle();
-        if (adminResp != null) adminProfileId = adminResp['id'] as String;
-      }
-
-      final profileData = {
-        'full_name': cleanName,
-        'phone': cleanPhone,
-        'document_type': documentType ?? 'DNI',
-        'document_number': cleanDoc,
-        'is_active': isActive,
-      };
-
-      String finalProfileId;
-
-      if (customerId != null) {
-        // Editar
-        await _supabase
-            .from('profiles')
-            .update(profileData)
-            .eq('id', customerId);
-        finalProfileId = customerId;
-
-        if (walletAdjustDelta != 0) {
-          await _supabase
-              .from('profiles')
-              .update({
-                'wallet_balance': currentWalletBalance + walletAdjustDelta,
-              })
-              .eq('id', finalProfileId);
-
-          await _supabase.from('wallet_movements').insert({
-            'profile_id': finalProfileId,
-            'points': walletAdjustDelta,
-            'movement_type':
-                walletAdjustDelta > 0 ? 'ADMIN_ADD' : 'ADMIN_SUBTRACT',
-            'description':
-                walletAdjustDelta > 0
-                    ? 'Ajuste manual (+$walletAdjustDelta monedas)'
-                    : 'Ajuste manual ($walletAdjustDelta monedas)',
-          });
-        }
-      } else {
-        // Crear
-        final inserted =
-            await _supabase
-                .from('profiles')
-                .insert(profileData)
-                .select('id')
-                .single();
-        finalProfileId = inserted['id'] as String;
-      }
-
-      // Créditos: Todo cliente tiene línea de crédito activa (por defecto límite 0.0 = infinito)
-      if (hasCredit) {
-        final existingCredit =
-            creditExistsInDb
-                ? true
-                : (await _supabase
-                        .from('customer_credits')
-                        .select('id')
-                        .eq('profile_id', finalProfileId)
-                        .maybeSingle()) !=
-                    null;
-
-        if (existingCredit) {
-          final targetCreditId = creditId;
-          final updateQuery = _supabase.from('customer_credits').update({
-            'credit_limit': newCreditLimit,
-            'is_active': true,
-            'updated_at': DateTime.now().toIso8601String(),
-          });
-          if (targetCreditId != null) {
-            await updateQuery.eq('id', targetCreditId);
-          } else {
-            await updateQuery.eq('profile_id', finalProfileId);
-          }
-        } else {
-          await _supabase.from('customer_credits').insert({
-            'profile_id': finalProfileId,
-            'credit_limit': newCreditLimit,
-            'current_debt': 0.0,
-            'is_active': true,
-            'created_by': adminProfileId,
-          });
-        }
-      } else if (creditExistsInDb && creditId != null && creditIsActive) {
-        await _supabase
-            .from('customer_credits')
-            .update({
-              'is_active': false,
-              'updated_at': DateTime.now().toIso8601String(),
-            })
-            .eq('id', creditId);
-      }
-      invalidateCustomersCache();
-    } on PostgrestException catch (e, stack) {
-      LoggerService.e(
-        'PostgrestException en saveCustomerFullProfile: ${e.message} (code: ${e.code})',
-        error: e,
-        stackTrace: stack,
-      );
-      if (e.code == '23505') {
-        throw AppException(
-          message: 'Ya existe un cliente con este documento o teléfono.',
-          originalError: e,
-        );
-      }
-      if (e.code == '42501') {
-        throw AppException(
-          message:
-              'Permiso denegado por políticas de seguridad (RLS). Ejecute la migración SQL en Supabase.',
-          originalError: e,
-        );
-      }
-      throw AppException(
-        message: 'Error de base de datos: ${e.message}',
-        originalError: e,
-      );
+      _cache.invalidateAll();
+      return const Right(null);
     } catch (e, stack) {
-      LoggerService.e(
-        'Error en saveCustomerFullProfile',
-        error: e,
-        stackTrace: stack,
-      );
-      if (e is AppException) rethrow;
-      throw AppException(
-        message: 'Error al guardar el perfil del cliente: ${e.toString()}',
-        originalError: e,
+      return Left(_mapFailure(e, stack, 'Error en saveCustomerFullProfile'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> toggleCustomerStatus(
+    String customerId,
+    bool isActive,
+  ) async {
+    try {
+      await _remoteDataSource.toggleCustomerStatus(customerId, isActive);
+      _cache.invalidateAll();
+      return const Right(null);
+    } catch (e, stack) {
+      return Left(
+        _mapFailure(e, stack, 'Error en toggleCustomerStatus $customerId'),
       );
     }
   }
 
   @override
-  Future<void> toggleCustomerStatus(String customerId, bool isActive) async {
+  Future<Either<Failure, CustomersGlobalStatsEntity>> getGlobalStats({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh) {
+      final cached = _cache.getStats();
+      if (cached != null && !cached.isStale) {
+        return Right(cached.data);
+      }
+    }
+
     try {
-      await _supabase
-          .from('profiles')
-          .update({'is_active': isActive})
-          .eq('id', customerId);
-      invalidateCustomersCache();
+      final stats = await _remoteDataSource.getGlobalStats();
+      _cache.putStats(stats);
+      return Right(stats);
     } catch (e, stack) {
-      LoggerService.e(
-        'Error en toggleCustomerStatus para $customerId',
-        error: e,
-        stackTrace: stack,
-      );
-      throw AppException(
-        message: 'Error al cambiar estado del cliente',
-        originalError: e,
-      );
+      return Left(_mapFailure(e, stack, 'Error en getGlobalStats'));
     }
   }
 
   @override
-  Future<Map<String, dynamic>> getGlobalStats() async {
-    try {
-      final res = await _supabase.rpc('get_customers_global_stats_rpc');
-      if (res != null && res is Map) {
-        final totalCustomers =
-            (res['totalCustomersCount'] ??
-                    res['total_customers_count'] ??
-                    res['total_count'] ??
-                    res['totalCount'] as num?)
-                ?.toInt() ??
-            0;
-        final activeCustomers =
-            (res['activeCustomersCount'] ??
-                    res['active_customers_count'] ??
-                    res['active_count'] ??
-                    res['activeCount'] as num?)
-                ?.toInt() ??
-            0;
-        final inactiveCustomers =
-            (res['inactiveCustomersCount'] ??
-                    res['inactive_customers_count'] ??
-                    res['inactive_count'] ??
-                    res['inactiveCount'] as num?)
-                ?.toInt() ??
-            0;
-        final totalRevenue =
-            (res['totalRevenue'] ?? res['total_revenue'] as num?)?.toDouble() ??
-            0.0;
-        final totalDebt =
-            (res['totalDebt'] ?? res['total_debt'] as num?)?.toDouble() ?? 0.0;
-        final debtCustomers =
-            (res['debtCustomersCount'] ?? res['debt_customers_count'] as num?)
-                ?.toInt() ??
-            0;
-
-        return {
-          'totalCount': totalCustomers,
-          'totalCustomersCount': totalCustomers,
-          'activeCount': activeCustomers,
-          'activeCustomersCount': activeCustomers,
-          'inactiveCount': inactiveCustomers,
-          'totalRevenue': totalRevenue,
-          'totalDebt': totalDebt,
-          'debtCustomersCount': debtCustomers,
-        };
-      }
-    } catch (rpcErr) {
-      LoggerService.w(
-        'RPC get_customers_global_stats_rpc no disponible o falló, usando fallback cliente: $rpcErr',
-      );
-    }
-
-    try {
-      final profilesRes = await _supabase
-          .from('customers')
-          .select('is_active');
-
-      final activeCount =
-          profilesRes.where((p) => p['is_active'] == true).length;
-      final inactiveCount =
-          profilesRes.where((p) => p['is_active'] == false).length;
-      final totalCount = profilesRes.length;
-
-      final ordersRes = await _supabase
-          .from('orders')
-          .select('total_amount')
-          .eq('status', 'COMPLETED')
-          .limit(1000);
-
-      double totalRevenue = 0.0;
-      for (var row in ordersRes) {
-        totalRevenue += (row['total_amount'] as num?)?.toDouble() ?? 0.0;
-      }
-
-      final creditsRes = await _supabase
-          .from('customer_credits')
-          .select('current_debt');
-      double totalDebt = 0.0;
-      int debtCustomersCount = 0;
-      for (var row in creditsRes) {
-        final debt = (row['current_debt'] as num?)?.toDouble() ?? 0.0;
-        totalDebt += debt;
-        if (debt > 0) {
-          debtCustomersCount++;
-        }
-      }
-
-      return {
-        'totalCount': totalCount,
-        'totalCustomersCount': totalCount,
-        'activeCount': activeCount,
-        'activeCustomersCount': activeCount,
-        'inactiveCount': inactiveCount,
-        'totalRevenue': totalRevenue,
-        'totalDebt': totalDebt,
-        'debtCustomersCount': debtCustomersCount,
-      };
-    } catch (e, stack) {
-      LoggerService.e(
-        'Error en getGlobalStats fallback',
-        error: e,
-        stackTrace: stack,
-      );
-      throw AppException(
-        message: 'Error al cargar estadísticas globales de clientes',
-        originalError: e,
-      );
-    }
-  }
-
-  @override
-  Future<List<CustomerEntity>> getTopCustomers(
+  Future<Either<Failure, List<CustomerEntity>>> getTopCustomers(
     int limit, {
     DateTime? startDate,
     DateTime? endDate,
+    bool forceRefresh = false,
   }) async {
-    final bool hasDateFilter = startDate != null || endDate != null;
-
-    // 1. Frame 0: Devolver inmediatamente si el caché está en memoria y vigente (solo si no hay filtro de fechas)
-    if (!hasDateFilter &&
-        _topCustomersCache != null &&
-        _topCustomersCacheTime != null) {
-      final isFresh =
-          DateTime.now().difference(_topCustomersCacheTime!) <
-          _topCustomersCacheTtl;
-      if (isFresh && _topCustomersCache!.isNotEmpty) {
-        return _topCustomersCache!;
-      }
-    }
-
-    if (!hasDateFilter) {
-      try {
-        final res = await _supabase.rpc(
-          'get_top_customers_rpc',
-          params: {'p_limit': limit},
-        );
-        if (res != null && res is List) {
-          final list =
-              res.map<CustomerEntity>((row) {
-                final totalRev =
-                    (row['total_revenue'] ??
-                            row['totalRevenue'] ??
-                            row['total_spent'] as num?)
-                        ?.toDouble() ??
-                    0.0;
-                final orderCount =
-                    (row['order_count'] ?? row['orderCount'] as num?)
-                        ?.toInt() ??
-                    0;
-                return CustomerEntity(
-                  id: row['id'] as String,
-                  fullName: row['full_name'] as String? ?? 'Cliente',
-                  phone: row['phone'] as String?,
-                  documentNumber: row['document_number'] as String?,
-                  documentType: row['document_type'] as String?,
-                  avatarUrl: row['avatar_url'] as String?,
-                  walletBalance:
-                      (row['wallet_balance'] as num?)?.toDouble() ?? 0.0,
-                  isActive: row['is_active'] as bool? ?? true,
-                  createdAt:
-                      row['created_at'] != null
-                          ? DateTime.tryParse(row['created_at'].toString())
-                          : null,
-                  totalRevenue: totalRev,
-                  orderCount: orderCount,
-                );
-              }).toList();
-
-          _topCustomersCache = list;
-          _topCustomersCacheTime = DateTime.now();
-          return list;
-        }
-      } catch (rpcErr) {
-        LoggerService.w(
-          'RPC get_top_customers_rpc no disponible o falló, usando fallback cliente: $rpcErr',
-        );
-        if (_topCustomersCache != null && _topCustomersCache!.isNotEmpty) {
-          return _topCustomersCache!;
-        }
+    if (!forceRefresh) {
+      final cached = _cache.getTopCustomers(
+        limit: limit,
+        startDate: startDate,
+        endDate: endDate,
+      );
+      if (cached != null && !cached.isStale) {
+        return Right(cached.data);
       }
     }
 
     try {
-      var ordersQuery = _supabase
-          .from('orders')
-          .select('customer_id, total_amount, created_at')
-          .eq('status', 'COMPLETED');
-
-      if (startDate != null) {
-        ordersQuery = ordersQuery.gte(
-          'created_at',
-          startDate.toUtc().toIso8601String(),
-        );
-      }
-      if (endDate != null) {
-        ordersQuery = ordersQuery.lte(
-          'created_at',
-          endDate.toUtc().toIso8601String(),
-        );
-      }
-
-      final ordersRes = await ordersQuery.limit(3000);
-
-      final revMap = <String, double>{};
-      final countMap = <String, int>{};
-      for (var row in ordersRes) {
-        final cid = row['customer_id'] as String?;
-        if (cid != null && cid.trim().isNotEmpty) {
-          revMap[cid] =
-              (revMap[cid] ?? 0.0) +
-              ((row['total_amount'] as num?)?.toDouble() ?? 0.0);
-          countMap[cid] = (countMap[cid] ?? 0) + 1;
-        }
-      }
-
-      var sortedEntries =
-          revMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-      final topIds = sortedEntries.take(limit).map((e) => e.key).toList();
-
-      if (topIds.isEmpty) return [];
-
-      final topProfilesRes = await _supabase
-          .from('customers')
-          .select(
-            'id, full_name, phone, document_number, document_type, avatar_url, wallet_balance, is_active, created_at',
-          )
-          .inFilter('id', topIds);
-
-      final list =
-          topProfilesRes.map<CustomerEntity>((json) {
-            final cid = json['id'] as String;
-            return CustomerEntity(
-              id: cid,
-              fullName: json['full_name'] as String? ?? 'Cliente',
-              phone: json['phone'] as String?,
-              documentNumber: json['document_number'] as String?,
-              documentType: json['document_type'] as String?,
-              avatarUrl: json['avatar_url'] as String?,
-              walletBalance:
-                  (json['wallet_balance'] as num?)?.toDouble() ?? 0.0,
-              isActive: json['is_active'] as bool? ?? true,
-              createdAt:
-                  json['created_at'] != null
-                      ? DateTime.parse(json['created_at'])
-                      : null,
-              totalRevenue: revMap[cid] ?? 0.0,
-              orderCount: countMap[cid] ?? 0,
-            );
-          }).toList();
-
-      list.sort((a, b) => b.totalRevenue.compareTo(a.totalRevenue));
-      _topCustomersCache = list;
-      _topCustomersCacheTime = DateTime.now();
-      return list;
+      final top = await _remoteDataSource.getTopCustomers(
+        limit,
+        startDate: startDate,
+        endDate: endDate,
+      );
+      _cache.putTopCustomers(
+        limit: limit,
+        startDate: startDate,
+        endDate: endDate,
+        data: top,
+      );
+      return Right(top);
     } catch (e, stack) {
-      LoggerService.e(
-        'Error en getTopCustomers fallback',
-        error: e,
-        stackTrace: stack,
+      return Left(_mapFailure(e, stack, 'Error en getTopCustomers'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<RecentOrderEntity>>> getCustomerRecentOrders(
+    String customerId,
+  ) async {
+    try {
+      final orders = await _remoteDataSource.getCustomerRecentOrders(
+        customerId,
       );
-      throw AppException(
-        message: 'Error al obtener clientes destacados',
-        originalError: e,
+      return Right(orders);
+    } catch (e, stack) {
+      return Left(
+        _mapFailure(
+          e,
+          stack,
+          'Error al cargar órdenes recientes de $customerId',
+        ),
       );
     }
   }
 
   @override
-  Future<List<RecentOrderEntity>> getCustomerRecentOrders(
+  Future<Either<Failure, List<TopProductEntity>>> getCustomerTopProducts(
     String customerId,
   ) async {
     try {
-      final res = await _supabase
-          .from('orders')
-          .select(
-            'id, created_at, total_amount, amount_paid, discount_amount, status, payment_status, payment_method, points_earned, points_used, due_date',
-          )
-          .eq('customer_id', customerId)
-          .order('created_at', ascending: false)
-          .limit(10);
-
-      return res.map<RecentOrderEntity>((json) {
-        return RecentOrderEntity(
-          id: json['id'] as String,
-          createdAt: DateTime.parse(json['created_at']),
-          totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
-          amountPaid: (json['amount_paid'] as num?)?.toDouble() ?? 0.0,
-          discountAmount: (json['discount_amount'] as num?)?.toDouble() ?? 0.0,
-          status: json['status'] as String? ?? 'COMPLETED',
-          paymentStatus: json['payment_status'] as String? ?? 'PAID',
-          paymentMethod: json['payment_method'] as String? ?? 'EFECTIVO',
-          pointsEarned: (json['points_earned'] as num?)?.toInt() ?? 0,
-          pointsUsed: (json['points_used'] as num?)?.toInt() ?? 0,
-          dueDate:
-              json['due_date'] != null
-                  ? DateTime.tryParse(json['due_date'])
-                  : null,
-        );
-      }).toList();
-    } catch (e, stackTrace) {
-      LoggerService.e(
-        'Error fetching customer recent orders for $customerId',
-        error: e,
-        stackTrace: stackTrace,
+      final products = await _remoteDataSource.getCustomerTopProducts(
+        customerId,
       );
-      return [];
-    }
-  }
-
-  @override
-  Future<List<TopProductEntity>> getCustomerTopProducts(
-    String customerId,
-  ) async {
-    try {
-      final res = await _supabase
-          .from('order_items')
-          .select('''
-            quantity, applied_price,
-            products(id, name, product_images(image_url, is_main)),
-            product_variants(id, product_images(image_url, is_main)),
-            order:orders!inner(customer_id, status)
-          ''')
-          .eq('order.customer_id', customerId)
-          .eq('order.status', 'COMPLETED')
-          .limit(200);
-
-      final productMap =
-          <String, ({int qty, double spent, String? imageUrl})>{};
-      for (var row in res) {
-        final productsObj = row['products'] as Map<String, dynamic>?;
-        final pname = productsObj?['name'] as String? ?? 'Producto';
-        final qty = (row['quantity'] as num?)?.toInt() ?? 0;
-        final price = (row['applied_price'] as num?)?.toDouble() ?? 0.0;
-
-        String? imageUrl;
-        if (productsObj != null) {
-          final prodImgs =
-              productsObj['product_images'] as List<dynamic>? ?? [];
-          if (prodImgs.isNotEmpty) {
-            final mainImg =
-                prodImgs.firstWhere(
-                      (img) => (img as Map<String, dynamic>)['is_main'] == true,
-                      orElse: () => prodImgs.first,
-                    )
-                    as Map<String, dynamic>?;
-            imageUrl = mainImg?['image_url'] as String?;
-          }
-        }
-
-        if (imageUrl == null && row['product_variants'] is Map) {
-          final varMap = row['product_variants'] as Map<String, dynamic>;
-          final varImgs = varMap['product_images'] as List<dynamic>? ?? [];
-          if (varImgs.isNotEmpty) {
-            final mainImg =
-                varImgs.firstWhere(
-                      (img) => (img as Map<String, dynamic>)['is_main'] == true,
-                      orElse: () => varImgs.first,
-                    )
-                    as Map<String, dynamic>?;
-            imageUrl = mainImg?['image_url'] as String?;
-          }
-        }
-
-        final current =
-            productMap[pname] ?? (qty: 0, spent: 0.0, imageUrl: null);
-        productMap[pname] = (
-          qty: current.qty + qty,
-          spent: current.spent + (qty * price),
-          imageUrl: current.imageUrl ?? imageUrl,
-        );
-      }
-
-      final sorted =
-          productMap.entries.toList()
-            ..sort((a, b) => b.value.spent.compareTo(a.value.spent));
-
-      return sorted.take(5).map((e) {
-        return TopProductEntity(
-          productName: e.key,
-          totalQuantity: e.value.qty,
-          totalSpent: e.value.spent,
-          imageUrl: e.value.imageUrl,
-        );
-      }).toList();
-    } catch (e, stackTrace) {
-      LoggerService.e(
-        'Error fetching customer top products for $customerId',
-        error: e,
-        stackTrace: stackTrace,
+      return Right(products);
+    } catch (e, stack) {
+      return Left(
+        _mapFailure(e, stack, 'Error al cargar top productos de $customerId'),
       );
-      return [];
     }
   }
 }

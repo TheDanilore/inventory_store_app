@@ -1,9 +1,30 @@
+import 'package:fpdart/fpdart.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customers_global_stats_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customers_page_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
 
 abstract class CustomersRepository {
-  Future<List<CustomerEntity>> getCustomers({
+  ({CustomersPageEntity data, bool isStale})? getCachedCustomersPage({
+    required int limit,
+    required int offset,
+    String? query,
+    bool showOnlyWithDebt = false,
+  });
+
+  ({CustomersGlobalStatsEntity data, bool isStale})? getCachedGlobalStats();
+
+  ({List<CustomerEntity> data, bool isStale})? getCachedTopCustomers({
+    required int limit,
+    DateTime? startDate,
+    DateTime? endDate,
+  });
+
+  void invalidateCache();
+
+  Future<Either<Failure, CustomersPageEntity>> getCustomers({
     required int limit,
     required int offset,
     String? query,
@@ -11,16 +32,16 @@ abstract class CustomersRepository {
     bool forceRefresh = false,
   });
 
-  Future<CustomerEntity> getCustomerDetail(String customerId);
+  Future<Either<Failure, CustomerEntity>> getCustomerDetail(String customerId);
 
-  Future<CustomerEntity> createCustomer({
+  Future<Either<Failure, CustomerEntity>> createCustomer({
     required String fullName,
     String? phone,
     String? documentNumber,
     String? documentType,
   });
 
-  Future<CustomerEntity> updateCustomer({
+  Future<Either<Failure, CustomerEntity>> updateCustomer({
     required String customerId,
     required String fullName,
     String? phone,
@@ -29,7 +50,7 @@ abstract class CustomersRepository {
     bool? isActive,
   });
 
-  Future<void> saveCustomerFullProfile({
+  Future<Either<Failure, void>> saveCustomerFullProfile({
     String? customerId,
     required String fullName,
     String? phone,
@@ -45,17 +66,27 @@ abstract class CustomersRepository {
     required double newCreditLimit,
   });
 
-  Future<void> toggleCustomerStatus(String customerId, bool isActive);
+  Future<Either<Failure, void>> toggleCustomerStatus(
+    String customerId,
+    bool isActive,
+  );
 
-  // Stats y KPI
-  Future<Map<String, dynamic>> getGlobalStats();
-  Future<List<CustomerEntity>> getTopCustomers(
+  Future<Either<Failure, CustomersGlobalStatsEntity>> getGlobalStats({
+    bool forceRefresh = false,
+  });
+
+  Future<Either<Failure, List<CustomerEntity>>> getTopCustomers(
     int limit, {
     DateTime? startDate,
     DateTime? endDate,
+    bool forceRefresh = false,
   });
 
-  // Detail Extras
-  Future<List<RecentOrderEntity>> getCustomerRecentOrders(String customerId);
-  Future<List<TopProductEntity>> getCustomerTopProducts(String customerId);
+  Future<Either<Failure, List<RecentOrderEntity>>> getCustomerRecentOrders(
+    String customerId,
+  );
+
+  Future<Either<Failure, List<TopProductEntity>>> getCustomerTopProducts(
+    String customerId,
+  );
 }

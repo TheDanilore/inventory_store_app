@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/constants/app_permissions.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../auth/presentation/bloc/auth_cubit.dart';
+import 'package:inventory_store_app/core/constants/app_permissions.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 
 class AdminCommandPaletteItem {
   final String title;
@@ -32,7 +33,7 @@ class AdminCommandPaletteDialog extends StatefulWidget {
       barrierDismissible: true,
       barrierLabel: 'CommandPalette',
       barrierColor: Colors.black.withValues(alpha: 0.4),
-      transitionDuration: const Duration(milliseconds: 200),
+      transitionDuration: const Duration(milliseconds: 180),
       pageBuilder: (context, anim1, anim2) {
         return const AdminCommandPaletteDialog();
       },
@@ -57,7 +58,9 @@ class AdminCommandPaletteDialog extends StatefulWidget {
 class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  int _selectedIndex = 0;
+  final ValueNotifier<int> _selectedIndex = ValueNotifier<int>(0);
+  final ValueNotifier<List<AdminCommandPaletteItem>> _filteredItems =
+      ValueNotifier<List<AdminCommandPaletteItem>>(const []);
 
   static const List<AdminCommandPaletteItem> _allItems = [
     AdminCommandPaletteItem(
@@ -252,6 +255,13 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
       permissions: [AppPermissions.settingsView],
     ),
     AdminCommandPaletteItem(
+      title: 'Ayuda y Soporte',
+      subtitle: 'Manuales operativos y diagnóstico del sistema',
+      routePath: '/help',
+      icon: Icons.help_outline_rounded,
+      category: 'Sistema',
+    ),
+    AdminCommandPaletteItem(
       title: 'Mi Perfil',
       subtitle: 'Datos de cuenta y sesión de usuario',
       routePath: '/profile',
@@ -260,57 +270,95 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
     ),
   ];
 
-  List<AdminCommandPaletteItem> _allowedItems = const [];
-  List<AdminCommandPaletteItem> _filteredItems = const [];
+  // Índice pre-normalizado sin tildes construido una única vez.
+  static final List<({AdminCommandPaletteItem item, String haystack})>
+  _normalizedCatalog = List.unmodifiable(
+    _allItems.map(
+      (item) => (
+        item: item,
+        haystack: _normalize('${item.title} ${item.subtitle} ${item.category}'),
+      ),
+    ),
+  );
+
+  List<({AdminCommandPaletteItem item, String haystack})> _allowedEntries =
+      const [];
+  String? _lastResolvedUserId;
 
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(_onSearchChanged);
+    _searchController.addListener(_applyFilter);
+    _resolveAllowedItems();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _updateAllowedItems();
+    final currentUserId = context.read<AuthCubit>().state.currentUser?.id;
+    if (currentUserId != _lastResolvedUserId) {
+      _resolveAllowedItems();
+    }
   }
 
-  void _updateAllowedItems() {
-    final authState = context.read<AuthCubit>().state;
-    final currentUser = authState.currentUser;
+  void _resolveAllowedItems() {
+    final currentUser = context.read<AuthCubit>().state.currentUser;
+    _lastResolvedUserId = currentUser?.id;
     final isAdmin = currentUser?.isAdmin ?? false;
 
-    _allowedItems =
-        _allItems.where((item) {
-          if (isAdmin) return true;
-          if (item.permissions == null || item.permissions!.isEmpty) {
-            return true;
-          }
-          return currentUser?.hasAnyPermission(item.permissions!) ?? false;
-        }).toList();
+    _allowedEntries = List.unmodifiable(
+      _normalizedCatalog.where((entry) {
+        if (isAdmin) return true;
+        final perms = entry.item.permissions;
+        if (perms == null || perms.isEmpty) return true;
+        return currentUser?.hasAnyPermission(perms) ?? false;
+      }),
+    );
 
     _applyFilter();
   }
 
-  void _onSearchChanged() {
-    setState(() {
-      _applyFilter();
-    });
+  void _applyFilter() {
+    final query = _normalize(_searchController.text.trim());
+    if (query.isEmpty) {
+      _filteredItems.value = List<AdminCommandPaletteItem>.unmodifiable(
+        _allowedEntries.map((e) => e.item),
+      );
+    } else {
+      _filteredItems.value = List<AdminCommandPaletteItem>.unmodifiable(
+        _allowedEntries
+            .where((e) => e.haystack.contains(query))
+            .map((e) => e.item),
+      );
+    }
+    _selectedIndex.value = 0;
   }
 
-  void _applyFilter() {
-    final query = _searchController.text.trim().toLowerCase();
-    if (query.isEmpty) {
-      _filteredItems = _allowedItems;
-    } else {
-      _filteredItems =
-          _allowedItems.where((item) {
-            return item.title.toLowerCase().contains(query) ||
-                item.subtitle.toLowerCase().contains(query) ||
-                item.category.toLowerCase().contains(query);
-          }).toList();
+  KeyEventResult _handleKeyEvent(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
     }
-    _selectedIndex = 0;
+
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      Navigator.of(context).pop();
+      return KeyEventResult.handled;
+    }
+
+    final items = _filteredItems.value;
+    if (items.isEmpty) return KeyEventResult.ignored;
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _selectedIndex.value = (_selectedIndex.value + 1) % items.length;
+      return KeyEventResult.handled;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      _selectedIndex.value =
+          (_selectedIndex.value - 1 + items.length) % items.length;
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
   }
 
   void _navigate(AdminCommandPaletteItem item) {
@@ -318,10 +366,54 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
     context.go(item.routePath);
   }
 
+  static String _normalize(String s) {
+    if (s.isEmpty) return s;
+    final buffer = StringBuffer();
+    final lower = s.toLowerCase();
+    for (var i = 0; i < lower.length; i++) {
+      final code = lower.codeUnitAt(i);
+      switch (code) {
+        case 0xE1:
+        case 0xE0:
+        case 0xE4:
+        case 0xE2:
+          buffer.write('a');
+        case 0xE9:
+        case 0xE8:
+        case 0xEB:
+        case 0xEA:
+          buffer.write('e');
+        case 0xED:
+        case 0xEC:
+        case 0xEF:
+        case 0xEE:
+          buffer.write('i');
+        case 0xF3:
+        case 0xF2:
+        case 0xF6:
+        case 0xF4:
+          buffer.write('o');
+        case 0xFA:
+        case 0xF9:
+        case 0xFC:
+        case 0xFB:
+          buffer.write('u');
+        case 0xF1:
+          buffer.write('n');
+        default:
+          buffer.writeCharCode(code);
+      }
+    }
+    return buffer.toString();
+  }
+
   @override
   void dispose() {
+    _searchController.removeListener(_applyFilter);
     _searchController.dispose();
     _focusNode.dispose();
+    _selectedIndex.dispose();
+    _filteredItems.dispose();
     super.dispose();
   }
 
@@ -339,103 +431,110 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
     return Center(
       child: Material(
         color: Colors.transparent,
-        child: Container(
-          width: 600,
-          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: borderColor, width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.14),
-                blurRadius: 36,
-                offset: const Offset(0, 14),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Search Header
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 14,
+        child: Focus(
+          onKeyEvent: _handleKeyEvent,
+          child: Container(
+            width: 600,
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: borderColor, width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.14),
+                  blurRadius: 36,
+                  offset: const Offset(0, 14),
                 ),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: borderColor, width: 1),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: borderColor, width: 1),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.search_rounded,
+                        color: textSecondary,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          focusNode: _focusNode,
+                          autofocus: true,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: textPrimary,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Buscar pantalla, reporte o módulo...',
+                            hintStyle: TextStyle(
+                              fontSize: 15,
+                              color:
+                                  isDark
+                                      ? const Color(0xFF64748B)
+                                      : const Color(0xFF94A3B8),
+                              fontWeight: FontWeight.w400,
+                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          onSubmitted: (_) {
+                            final items = _filteredItems.value;
+                            final idx = _selectedIndex.value;
+                            if (items.isNotEmpty && idx < items.length) {
+                              _navigate(items[idx]);
+                            }
+                          },
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isDark
+                                  ? AppColors.darkSurfaceElevated
+                                  : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: Text(
+                          'ESC',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.search_rounded, color: textSecondary, size: 22),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        focusNode: _focusNode,
-                        autofocus: true,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: textPrimary,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Buscar pantalla, reporte o módulo...',
-                          hintStyle: TextStyle(
-                            fontSize: 15,
-                            color:
-                                isDark
-                                    ? const Color(0xFF64748B)
-                                    : const Color(0xFF94A3B8),
-                            fontWeight: FontWeight.w400,
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        onSubmitted: (_) {
-                          if (_filteredItems.isNotEmpty &&
-                              _selectedIndex < _filteredItems.length) {
-                            _navigate(_filteredItems[_selectedIndex]);
-                          }
-                        },
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            isDark
-                                ? AppColors.darkSurfaceElevated
-                                : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: borderColor),
-                      ),
-                      child: Text(
-                        'ESC',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: textSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
 
-              // Results List
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 380),
-                child:
-                    _filteredItems.isEmpty
-                        ? Container(
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 380),
+                  child: ValueListenableBuilder<List<AdminCommandPaletteItem>>(
+                    valueListenable: _filteredItems,
+                    builder: (context, items, _) {
+                      if (items.isEmpty) {
+                        return Container(
                           padding: const EdgeInsets.all(32),
                           alignment: Alignment.center,
                           child: Column(
@@ -457,204 +556,242 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                               ),
                             ],
                           ),
-                        )
-                        : ListView.builder(
-                          shrinkWrap: true,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          itemCount: _filteredItems.length,
-                          itemBuilder: (context, index) {
-                            final item = _filteredItems[index];
-                            final isSelected = index == _selectedIndex;
+                        );
+                      }
 
-                            return InkWell(
-                              onTap: () => _navigate(item),
-                              onHover: (hovered) {
-                                if (hovered && _selectedIndex != index) {
-                                  setState(() => _selectedIndex = index);
-                                }
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 2,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      isSelected
-                                          ? (isDark
-                                              ? AppColors.primary.withValues(
-                                                alpha: 0.18,
-                                              )
-                                              : const Color(0xFFEFF6FF))
-                                          : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color:
-                                            isSelected
-                                                ? AppColors.primary.withValues(
-                                                  alpha: isDark ? 0.3 : 0.12,
-                                                )
-                                                : (isDark
-                                                    ? AppColors
-                                                        .darkSurfaceElevated
-                                                    : const Color(0xFFF1F5F9)),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(
-                                        item.icon,
-                                        size: 19,
-                                        color:
-                                            isSelected
-                                                ? (isDark
-                                                    ? const Color(0xFF60A5FA)
-                                                    : const Color(0xFF2563EB))
-                                                : textSecondary,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            item.title,
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight:
-                                                  isSelected
-                                                      ? FontWeight.w700
-                                                      : FontWeight.w600,
-                                              color:
-                                                  isSelected
-                                                      ? (isDark
-                                                          ? Colors.white
-                                                          : const Color(
-                                                            0xFF1E40AF,
-                                                          ))
-                                                      : textPrimary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            item.subtitle,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: textSecondary,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            isDark
-                                                ? AppColors.darkSurfaceElevated
-                                                : const Color(0xFFF8FAFC),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: borderColor),
-                                      ),
-                                      child: Text(
-                                        item.category,
-                                        style: TextStyle(
-                                          fontSize: 10.5,
-                                          fontWeight: FontWeight.w600,
-                                          color: textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-              ),
-
-              // Footer Bar
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: footerBg,
-                  borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(20),
+                      return ValueListenableBuilder<int>(
+                        valueListenable: _selectedIndex,
+                        builder: (context, selectedIdx, _) {
+                          return ListView.builder(
+                            shrinkWrap: true,
+                            itemExtent: 64,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            itemCount: items.length,
+                            itemBuilder: (context, index) {
+                              final item = items[index];
+                              final isSelected = index == selectedIdx;
+                              return _CommandPaletteTile(
+                                item: item,
+                                isSelected: isSelected,
+                                isDark: isDark,
+                                borderColor: borderColor,
+                                textPrimary: textPrimary,
+                                textSecondary: textSecondary,
+                                onTap: () => _navigate(item),
+                                onHover: () {
+                                  if (_selectedIndex.value != index) {
+                                    _selectedIndex.value = index;
+                                  }
+                                },
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
                   ),
-                  border: Border(top: BorderSide(color: borderColor, width: 1)),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.keyboard_return_rounded,
-                      size: 14,
-                      color:
-                          isDark
-                              ? const Color(0xFF64748B)
-                              : const Color(0xFF94A3B8),
+
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: footerBg,
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(20),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'para seleccionar',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    border: Border(
+                      top: BorderSide(color: borderColor, width: 1),
                     ),
-                    const SizedBox(width: 16),
-                    Icon(
-                      Icons.swap_vert_rounded,
-                      size: 15,
-                      color:
-                          isDark
-                              ? const Color(0xFF64748B)
-                              : const Color(0xFF94A3B8),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'para navegar',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      'DANILORE ONE Command Bar',
-                      style: TextStyle(
-                        fontSize: 11,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.keyboard_return_rounded,
+                        size: 14,
                         color:
                             isDark
-                                ? const Color(0xFF475569)
+                                ? const Color(0xFF64748B)
                                 : const Color(0xFF94A3B8),
-                        fontWeight: FontWeight.w600,
                       ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'para seleccionar',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(
+                        Icons.swap_vert_rounded,
+                        size: 15,
+                        color:
+                            isDark
+                                ? const Color(0xFF64748B)
+                                : const Color(0xFF94A3B8),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'para navegar',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'DANILORE ONE',
+                          textAlign: TextAlign.end,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color:
+                                isDark
+                                    ? const Color(0xFF475569)
+                                    : const Color(0xFF94A3B8),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CommandPaletteTile extends StatelessWidget {
+  final AdminCommandPaletteItem item;
+  final bool isSelected;
+  final bool isDark;
+  final Color borderColor;
+  final Color textPrimary;
+  final Color textSecondary;
+  final VoidCallback onTap;
+  final VoidCallback onHover;
+
+  const _CommandPaletteTile({
+    required this.item,
+    required this.isSelected,
+    required this.isDark,
+    required this.borderColor,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.onTap,
+    required this.onHover,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      onHover: (hovered) {
+        if (hovered) onHover();
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? (isDark
+                      ? AppColors.primary.withValues(alpha: 0.18)
+                      : const Color(0xFFEFF6FF))
+                  : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color:
+                    isSelected
+                        ? AppColors.primary.withValues(
+                          alpha: isDark ? 0.3 : 0.12,
+                        )
+                        : (isDark
+                            ? AppColors.darkSurfaceElevated
+                            : const Color(0xFFF1F5F9)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                item.icon,
+                size: 19,
+                color:
+                    isSelected
+                        ? (isDark
+                            ? const Color(0xFF60A5FA)
+                            : const Color(0xFF2563EB))
+                        : textSecondary,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w600,
+                      color:
+                          isSelected
+                              ? (isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1E40AF))
+                              : textPrimary,
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    item.subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, color: textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color:
+                    isDark
+                        ? AppColors.darkSurfaceElevated
+                        : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: borderColor),
+              ),
+              child: Text(
+                item.category,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: textSecondary,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

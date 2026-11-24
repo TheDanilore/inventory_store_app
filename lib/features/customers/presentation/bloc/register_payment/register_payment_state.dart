@@ -1,8 +1,11 @@
+import 'package:equatable/equatable.dart';
+import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
-import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 
-class RegisterPaymentState {
+enum CustomerPaymentShiftStatus { idle, loading, open, closed, error }
+
+class RegisterPaymentState extends Equatable {
   final bool isLoading;
   final bool isSaving;
   final bool isSuccess;
@@ -13,15 +16,18 @@ class RegisterPaymentState {
   final List<OrderEntity> pendingOrders;
   final List<FinancialAccountEntity> accounts;
 
-  // Selections
+  // Selections & Shift Status
   final OrderEntity? selectedOrder;
   final FinancialAccountEntity? selectedAccount;
   final CashShiftEntity? activeShift;
+  final CustomerPaymentShiftStatus shiftStatus;
+  final String? shiftErrorMessage;
 
-  // Form
+  // Form & Idempotency
   final String amount;
   final String? amountError;
   final String? selectedQuickChip;
+  final String idempotencyKey;
 
   const RegisterPaymentState({
     this.isLoading = true,
@@ -34,9 +40,12 @@ class RegisterPaymentState {
     this.selectedOrder,
     this.selectedAccount,
     this.activeShift,
+    this.shiftStatus = CustomerPaymentShiftStatus.idle,
+    this.shiftErrorMessage,
     this.amount = '',
     this.amountError,
     this.selectedQuickChip,
+    this.idempotencyKey = '',
   });
 
   RegisterPaymentState copyWith({
@@ -55,11 +64,15 @@ class RegisterPaymentState {
     bool clearSelectedAccount = false,
     CashShiftEntity? activeShift,
     bool clearActiveShift = false,
+    CustomerPaymentShiftStatus? shiftStatus,
+    String? shiftErrorMessage,
+    bool clearShiftErrorMessage = false,
     String? amount,
     String? amountError,
     bool clearAmountError = false,
     String? selectedQuickChip,
     bool clearSelectedQuickChip = false,
+    String? idempotencyKey,
   }) {
     return RegisterPaymentState(
       isLoading: isLoading ?? this.isLoading,
@@ -78,12 +91,38 @@ class RegisterPaymentState {
               ? null
               : (selectedAccount ?? this.selectedAccount),
       activeShift: clearActiveShift ? null : (activeShift ?? this.activeShift),
+      shiftStatus: shiftStatus ?? this.shiftStatus,
+      shiftErrorMessage:
+          clearShiftErrorMessage
+              ? null
+              : (shiftErrorMessage ?? this.shiftErrorMessage),
       amount: amount ?? this.amount,
       amountError: clearAmountError ? null : (amountError ?? this.amountError),
       selectedQuickChip:
           clearSelectedQuickChip
               ? null
               : (selectedQuickChip ?? this.selectedQuickChip),
+      idempotencyKey: idempotencyKey ?? this.idempotencyKey,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    isLoading,
+    isSaving,
+    isSuccess,
+    errorMessage,
+    loadingError,
+    pendingOrders,
+    accounts,
+    selectedOrder,
+    selectedAccount,
+    activeShift,
+    shiftStatus,
+    shiftErrorMessage,
+    amount,
+    amountError,
+    selectedQuickChip,
+    idempotencyKey,
+  ];
 }

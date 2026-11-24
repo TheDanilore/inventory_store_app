@@ -2,7 +2,8 @@ import 'package:equatable/equatable.dart';
 
 class CustomerCreditEntity extends Equatable {
   final String id;
-  final String profileId;
+  final String? profileId;
+  final String? customerRecordId;
   final double creditLimit;
   final double currentDebt;
   final bool isActive;
@@ -14,6 +15,12 @@ class CustomerCreditEntity extends Equatable {
   final String? customerName;
   final String? customerDocument;
   final String? customerPhone;
+
+  /// Identificador canónico del cliente (`customers.id` o `profiles.id` legado).
+  String get effectiveCustomerId =>
+      (customerRecordId != null && customerRecordId!.isNotEmpty)
+          ? customerRecordId!
+          : (profileId ?? id);
 
   bool get isUnlimited => creditLimit <= 0;
   double get availableCredit =>
@@ -29,7 +36,8 @@ class CustomerCreditEntity extends Equatable {
 
   const CustomerCreditEntity({
     required this.id,
-    required this.profileId,
+    this.profileId,
+    this.customerRecordId,
     this.creditLimit = 0.0,
     this.currentDebt = 0.0,
     this.isActive = true,
@@ -41,10 +49,41 @@ class CustomerCreditEntity extends Equatable {
     this.customerPhone,
   });
 
+  CustomerCreditEntity copyWith({
+    String? id,
+    String? profileId,
+    String? customerRecordId,
+    double? creditLimit,
+    double? currentDebt,
+    bool? isActive,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? createdBy,
+    String? customerName,
+    String? customerDocument,
+    String? customerPhone,
+  }) {
+    return CustomerCreditEntity(
+      id: id ?? this.id,
+      profileId: profileId ?? this.profileId,
+      customerRecordId: customerRecordId ?? this.customerRecordId,
+      creditLimit: creditLimit ?? this.creditLimit,
+      currentDebt: currentDebt ?? this.currentDebt,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      createdBy: createdBy ?? this.createdBy,
+      customerName: customerName ?? this.customerName,
+      customerDocument: customerDocument ?? this.customerDocument,
+      customerPhone: customerPhone ?? this.customerPhone,
+    );
+  }
+
   @override
   List<Object?> get props => [
     id,
     profileId,
+    customerRecordId,
     creditLimit,
     currentDebt,
     isActive,

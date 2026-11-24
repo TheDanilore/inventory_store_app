@@ -25,14 +25,14 @@ class SupplierModel extends SupplierEntity {
       isActive: json['is_active'] as bool? ?? true,
       createdAt:
           json['created_at'] != null
-              ? DateTime.parse(json['created_at'] as String)
+              ? DateTime.tryParse(json['created_at'].toString())
               : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      if (id.isNotEmpty) 'id': id, // Se omite si está vacío (para inserts)
+      if (id.isNotEmpty) 'id': id,
       'name': name,
       'tax_id': taxId,
       'contact_name': contactName,
@@ -65,6 +65,19 @@ class SupplierModel extends SupplierEntity {
       address: address ?? this.address,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}
+
+class SupplierStatsModel {
+  const SupplierStatsModel._();
+
+  static SupplierStatsEntity fromJson(Map<String, dynamic> json) {
+    return SupplierStatsEntity(
+      totalSuppliers: (json['totalSuppliers'] as num?)?.toInt() ?? 0,
+      activeSuppliers: (json['activeSuppliers'] as num?)?.toInt() ?? 0,
+      inactiveSuppliers: (json['inactiveSuppliers'] as num?)?.toInt() ?? 0,
+      withTaxIdCount: (json['withTaxIdCount'] as num?)?.toInt() ?? 0,
     );
   }
 }

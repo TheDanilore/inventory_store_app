@@ -14,6 +14,7 @@ class CustomersTableView extends StatefulWidget {
   final String? initialSortColumn;
   final bool initialSortAscending;
   final bool hasReachedMax;
+  final bool isLoadingMore;
   final ValueChanged<CustomerEntity>? onRowTap;
   final ValueChanged<CustomerEntity> onOpenDetail;
   final ValueChanged<CustomerEntity> onEditCustomer;
@@ -34,6 +35,7 @@ class CustomersTableView extends StatefulWidget {
     this.initialSortColumn = 'name',
     this.initialSortAscending = true,
     this.hasReachedMax = true,
+    this.isLoadingMore = false,
     this.onRowTap,
     required this.onOpenDetail,
     required this.onEditCustomer,
@@ -47,24 +49,46 @@ class CustomersTableView extends StatefulWidget {
 }
 
 class _CustomersTableViewState extends State<CustomersTableView> {
+  static final DateFormat _shortDateFormat = DateFormat('dd/MM/yy', 'es');
+
   final Set<Object> _selectedIds = {};
   String? _sortColumnId;
   bool _isSortAscending = true;
+  late List<CustomerEntity> _sortedCustomers;
+  late Map<String, int> _vipRankById;
 
   @override
   void initState() {
     super.initState();
     _sortColumnId = widget.initialSortColumn;
     _isSortAscending = widget.initialSortAscending;
+    _rebuildVipLookup();
+    _rebuildSortedList();
   }
 
-  int? _getVipRank(String id) {
-    final idx = widget.topVipList.indexWhere((c) => c.id == id);
-    return idx != -1 ? idx + 1 : null;
+  @override
+  void didUpdateWidget(covariant CustomersTableView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.topVipList, widget.topVipList)) {
+      _rebuildVipLookup();
+    }
+    if (!identical(oldWidget.customers, widget.customers)) {
+      _rebuildSortedList();
+    }
   }
 
-  List<CustomerEntity> _getSortedList() {
-    if (_sortColumnId == null) return widget.customers;
+  void _rebuildVipLookup() {
+    _vipRankById = {
+      for (int i = 0; i < widget.topVipList.length; i++)
+        widget.topVipList[i].id: i + 1,
+    };
+  }
+
+  void _rebuildSortedList() {
+    if (_sortColumnId == null) {
+      _sortedCustomers = widget.customers;
+      return;
+    }
     final list = List<CustomerEntity>.from(widget.customers);
     list.sort((a, b) {
       int cmp = 0;
@@ -90,7 +114,7 @@ class _CustomersTableViewState extends State<CustomersTableView> {
       }
       return _isSortAscending ? cmp : -cmp;
     });
-    return list;
+    _sortedCustomers = list;
   }
 
   void _copyToClipboard(BuildContext context, String text, String label) {
@@ -105,14 +129,13 @@ class _CustomersTableViewState extends State<CustomersTableView> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final sortedCustomers = _getSortedList();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AdminProTable<CustomerEntity>(
-          items: sortedCustomers,
+          items: _sortedCustomers,
           itemId: (c) => c.id,
           selectedIds: _selectedIds,
           onSelectionChanged:
@@ -128,6 +151,7 @@ class _CustomersTableViewState extends State<CustomersTableView> {
               (colId, asc) => setState(() {
                 _sortColumnId = colId;
                 _isSortAscending = asc;
+                _rebuildSortedList();
               }),
           minTableWidth: 960,
           margin: EdgeInsets.zero,
@@ -155,7 +179,7 @@ class _CustomersTableViewState extends State<CustomersTableView> {
               flex: 4,
               isSortable: true,
               cellBuilder: (context, c) {
-                final vipRank = _getVipRank(c.id);
+                final vipRank = _vipRankById[c.id];
                 return Row(
                   children: [
                     _buildAvatar(c),
@@ -236,7 +260,7 @@ class _CustomersTableViewState extends State<CustomersTableView> {
                           ),
                           if (c.createdAt != null)
                             Text(
-                              'Reg: ${DateFormat('dd/MM/yy', 'es').format(c.createdAt!)}',
+                              'Reg: ${_shortDateFormat.format(c.createdAt!)}',
                               style: const TextStyle(
                                 fontSize: 10.5,
                                 color: AppColors.textMuted,
@@ -437,7 +461,7 @@ class _CustomersTableViewState extends State<CustomersTableView> {
                     ),
                     if (c.lastOrderAt != null)
                       Text(
-                        'Últ: ${DateFormat('dd/MM/yy', 'es').format(c.lastOrderAt!)}',
+                        'Últ: ${_shortDateFormat.format(c.lastOrderAt!)}',
                         style: const TextStyle(
                           fontSize: 10,
                           color: AppColors.textMuted,
@@ -488,7 +512,7 @@ class _CustomersTableViewState extends State<CustomersTableView> {
           ],
           // Chameleon Mobile Touch Card (<640px)
           mobileCardBuilder: (context, c, isSelected, onSelect) {
-            final vipRank = _getVipRank(c.id);
+            final vipRank = _vipRankById[c.id];
             return InkWell(
               onTap: () {
                 if (widget.onRowTap != null) {
@@ -646,7 +670,7 @@ class _CustomersTableViewState extends State<CustomersTableView> {
         ),
         if (!widget.hasReachedMax && widget.onLoadMore != null)
           InkWell(
-            onTap: widget.onLoadMore,
+            onTap: widget.isLoadingMore ? null : widget.onLoadMore,
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12),
               alignment: Alignment.center,
@@ -654,25 +678,32 @@ class _CustomersTableViewState extends State<CustomersTableView> {
                 border: Border(top: BorderSide(color: AppColors.border)),
                 color: AppColors.background,
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 18,
-                    color: AppColors.primary,
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    'Cargar más clientes...',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
+              child:
+                  widget.isLoadingMore
+                      ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Cargar más clientes...',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
             ),
           ),
       ],

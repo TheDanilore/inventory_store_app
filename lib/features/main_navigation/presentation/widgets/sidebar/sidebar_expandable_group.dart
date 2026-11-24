@@ -4,6 +4,8 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/sidebar/admin_sidebar_models.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/sidebar/sidebar_nav_tile.dart';
 
+/// Grupo desplegable del sidebar sin mutaciones durante `build()` ni
+/// subárboles cerrados retenidos en RAM.
 class SidebarExpandableGroup extends StatefulWidget {
   final AdminSidebarItem item;
   final bool isCollapsed;
@@ -21,6 +23,16 @@ class SidebarExpandableGroup extends StatefulWidget {
 }
 
 class _SidebarExpandableGroupState extends State<SidebarExpandableGroup> {
+  void _toggle() {
+    setState(() {
+      if (SidebarNavigationMemory.expandedGroups.contains(widget.item.title)) {
+        SidebarNavigationMemory.expandedGroups.remove(widget.item.title);
+      } else {
+        SidebarNavigationMemory.expandedGroups.add(widget.item.title);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.item.children.isEmpty) {
@@ -31,16 +43,10 @@ class _SidebarExpandableGroupState extends State<SidebarExpandableGroup> {
     final hasActiveChild = widget.item.children.any(
       (sub) => SidebarNavTile.isItemActive(sub.routePath, widget.currentPath),
     );
+    final isOpen =
+        hasActiveChild ||
+        SidebarNavigationMemory.expandedGroups.contains(widget.item.title);
 
-    // Sincronizar persistencia: si tiene un hijo activo, se mantiene abierto
-    if (hasActiveChild) {
-      SidebarNavigationMemory.expandedGroups.add(widget.item.title);
-    }
-    final isOpen = SidebarNavigationMemory.expandedGroups.contains(
-      widget.item.title,
-    );
-
-    // Modo Colapsado: Menú flotante Popup
     if (widget.isCollapsed) {
       return PopupMenuButton<String>(
         tooltip: widget.item.title,
@@ -110,7 +116,6 @@ class _SidebarExpandableGroupState extends State<SidebarExpandableGroup> {
       );
     }
 
-    // Modo Expandido: Cabecera con Chevron + Lista de Sub-ítems
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -121,21 +126,7 @@ class _SidebarExpandableGroupState extends State<SidebarExpandableGroup> {
             borderRadius: BorderRadius.circular(10),
             child: InkWell(
               borderRadius: BorderRadius.circular(10),
-              onTap: () {
-                setState(() {
-                  if (SidebarNavigationMemory.expandedGroups.contains(
-                    widget.item.title,
-                  )) {
-                    SidebarNavigationMemory.expandedGroups.remove(
-                      widget.item.title,
-                    );
-                  } else {
-                    SidebarNavigationMemory.expandedGroups.add(
-                      widget.item.title,
-                    );
-                  }
-                });
-              },
+              onTap: _toggle,
               hoverColor:
                   isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
               child: Container(
@@ -179,17 +170,15 @@ class _SidebarExpandableGroupState extends State<SidebarExpandableGroup> {
                         ),
                       ),
                     ),
-                    AnimatedRotation(
-                      turns: isOpen ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 18,
-                        color:
-                            isDark
-                                ? AppColors.darkTextMuted
-                                : const Color(0xFF94A3B8),
-                      ),
+                    Icon(
+                      isOpen
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color:
+                          isDark
+                              ? AppColors.darkTextMuted
+                              : const Color(0xFF94A3B8),
                     ),
                   ],
                 ),
@@ -197,47 +186,34 @@ class _SidebarExpandableGroupState extends State<SidebarExpandableGroup> {
             ),
           ),
         ),
-        AnimatedSize(
-          duration: Duration(milliseconds: isOpen ? 220 : 160),
-          curve: isOpen ? Curves.easeOutCubic : Curves.easeInCubic,
-          alignment: Alignment.topCenter,
-          child:
-              !isOpen
-                  ? const SizedBox(width: double.infinity)
-                  : Container(
-                    margin: const EdgeInsets.only(
-                      left: 20,
-                      right: 8,
-                      bottom: 4,
-                    ),
-                    padding: const EdgeInsets.only(left: 8),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        left: BorderSide(
-                          color:
-                              isDark
-                                  ? AppColors.darkBorderSubtle
-                                  : const Color(0xFFE2E8F0),
-                          width: 1.5,
-                        ),
-                      ),
-                    ),
-                    child: Column(
-                      children:
-                          widget.item.children
-                              .map(
-                                (sub) => SidebarNavTile(
-                                  key: ValueKey(sub.routePath),
-                                  item: sub,
-                                  isCollapsed: false,
-                                  isSubItem: true,
-                                  currentPath: widget.currentPath,
-                                ),
-                              )
-                              .toList(),
-                    ),
+        if (isOpen)
+          Container(
+            margin: const EdgeInsets.only(left: 20, right: 8, bottom: 4),
+            padding: const EdgeInsets.only(left: 8),
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color:
+                      isDark
+                          ? AppColors.darkBorderSubtle
+                          : const Color(0xFFE2E8F0),
+                  width: 1.5,
+                ),
+              ),
+            ),
+            child: Column(
+              children: [
+                for (final sub in widget.item.children)
+                  SidebarNavTile(
+                    key: ValueKey(sub.routePath),
+                    item: sub,
+                    isCollapsed: false,
+                    isSubItem: true,
+                    currentPath: widget.currentPath,
                   ),
-        ),
+              ],
+            ),
+          ),
       ],
     );
   }

@@ -29,11 +29,10 @@ class HelpHighlightScope extends InheritedWidget {
       tokens.isDark != oldWidget.tokens.isDark;
 }
 
-/// Widget de texto inteligente que resalta automáticamente las palabras que coinciden
-/// con los tokens de búsqueda activos en [HelpHighlightScope].
+/// Widget de texto que resalta coincidencias con los tokens activos de búsqueda.
 ///
-/// Optimizado con memoización acotada y normalización O(N) sin regex ni bucles de replaceAll
-/// para reducir la presión en el Garbage Collector en dispositivos de gama baja.
+/// Cuando no hay búsqueda activa, retorna directamente [Text] sin consultar
+/// normalización ni crear [TextSpan] en memoria.
 class HelpText extends StatelessWidget {
   final String text;
   final TextStyle? style;
@@ -50,14 +49,17 @@ class HelpText extends StatelessWidget {
     this.overflow,
   });
 
+  static const int _maxCacheEntries = 128;
   static final Map<String, String> _normalizeCache = <String, String>{};
 
-  /// Normaliza una cadena removiendo tildes y diéresis de forma O(N).
-  /// Almacena en caché estática acotada (máx 512 cadenas) para acceso O(1).
-  static String normalize(String s) {
+  /// Normaliza una cadena removiendo tildes y diéresis en una sola pasada O(N).
+  /// Usa caché acotada con evicción FIFO únicamente cuando [cache] es true.
+  static String normalize(String s, {bool cache = true}) {
     if (s.isEmpty) return s;
-    final cached = _normalizeCache[s];
-    if (cached != null) return cached;
+    if (cache) {
+      final cached = _normalizeCache[s];
+      if (cached != null) return cached;
+    }
 
     final buffer = StringBuffer();
     final lower = s.toLowerCase();
@@ -95,8 +97,12 @@ class HelpText extends StatelessWidget {
           buffer.writeCharCode(code);
       }
     }
+
     final result = buffer.toString();
-    if (_normalizeCache.length < 512) {
+    if (cache) {
+      if (_normalizeCache.length >= _maxCacheEntries) {
+        _normalizeCache.remove(_normalizeCache.keys.first);
+      }
       _normalizeCache[s] = result;
     }
     return result;
@@ -105,7 +111,7 @@ class HelpText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scope = HelpHighlightScope.maybeOf(context);
-    final tokens = scope?.searchTokens ?? const [];
+    final tokens = scope?.searchTokens ?? const <String>[];
     if (tokens.isEmpty) {
       return Text(
         text,

@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 import 'package:inventory_store_app/features/purchases/domain/repositories/supplier_credits_repository.dart';
 
 class RegisterSupplierPaymentParams {
@@ -12,8 +13,9 @@ class RegisterSupplierPaymentParams {
   final String? orderId;
   final String notes;
   final String? shiftId;
+  final String? idempotencyKey;
 
-  RegisterSupplierPaymentParams({
+  const RegisterSupplierPaymentParams({
     required this.supplierId,
     required this.creditId,
     required this.amount,
@@ -21,26 +23,22 @@ class RegisterSupplierPaymentParams {
     required this.orderId,
     required this.notes,
     required this.shiftId,
+    this.idempotencyKey,
   });
 }
 
 @lazySingleton
 class RegisterSupplierPaymentUseCase
-    implements UseCase<void, RegisterSupplierPaymentParams> {
+    implements UseCase<SupplierCreditEntity?, RegisterSupplierPaymentParams> {
   final SupplierCreditsRepository repository;
 
   RegisterSupplierPaymentUseCase(this.repository);
 
   @override
-  Future<Either<Failure, void>> call(
+  Future<Either<Failure, SupplierCreditEntity?>> call(
     RegisterSupplierPaymentParams params,
-  ) async {
-    // Optionally fetch admin profile ID if the repository needs it explicitly.
-    final adminProfileIdRes = await repository.getAdminProfileId();
-    String? adminProfileId;
-    adminProfileIdRes.fold((l) => null, (r) => adminProfileId = r);
-
-    return await repository.registerPayment(
+  ) {
+    return repository.registerPayment(
       supplierId: params.supplierId,
       creditId: params.creditId,
       amount: params.amount,
@@ -48,7 +46,7 @@ class RegisterSupplierPaymentUseCase
       orderId: params.orderId,
       notes: params.notes,
       shiftId: params.shiftId,
-      adminProfileId: adminProfileId,
+      idempotencyKey: params.idempotencyKey,
     );
   }
 }

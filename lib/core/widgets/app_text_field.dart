@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class AppTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -49,6 +50,13 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final baseStyle = TextStyle(
+      fontSize: 15,
+      fontWeight: FontWeight.w500,
+      color: AppColors.txtPrimary(context),
+    );
+    final resolvedStyle = style != null ? baseStyle.merge(style) : baseStyle;
+
     return TextFormField(
       controller: controller,
       validator: validator,
@@ -63,42 +71,61 @@ class AppTextField extends StatelessWidget {
       textCapitalization: textCapitalization,
       textInputAction: textInputAction,
       focusNode: focusNode,
-      style:
-          style ?? const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+      style: resolvedStyle,
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
-        hintStyle: TextStyle(color: Colors.grey.shade500),
+        hintStyle: TextStyle(color: AppColors.txtMuted(context), fontSize: 14),
         prefixText: prefixText,
-        labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-        prefixIcon: Icon(icon, color: Colors.grey.shade500, size: 22),
+        labelStyle: TextStyle(
+          color: AppColors.txtSecondary(context),
+          fontSize: 14,
+        ),
+        prefixIcon: Icon(
+          icon,
+          color: AppColors.txtSecondary(context),
+          size: 20,
+        ),
         suffixIcon: suffixIcon,
         helperText: helperText,
-        helperStyle: TextStyle(color: Colors.grey.shade500),
+        helperStyle: TextStyle(color: AppColors.txtMuted(context), fontSize: 12),
         filled: true,
-        fillColor: readOnly ? Colors.grey.shade200 : Colors.grey.shade50,
+        fillColor:
+            readOnly
+                ? AppColors.inputFillReadOnly(context)
+                : AppColors.inputFill(context),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColors.brdSubtle(context)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColors.brdSubtle(context)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
-            color: Theme.of(context).primaryColor,
-            width: 2,
+            color: AppColors.brandPrimary(context),
+            width: 1.8,
           ),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: AppColors.dangerText(context),
+            width: 1.5,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: AppColors.dangerText(context),
+            width: 1.8,
+          ),
         ),
       ),
     );

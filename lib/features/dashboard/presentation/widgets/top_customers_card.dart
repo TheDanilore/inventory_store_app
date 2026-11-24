@@ -69,27 +69,19 @@ class _TopCustomersCardState extends State<TopCustomersCard> {
         break;
     }
 
-    try {
-      final repo = sl<CustomersRepository>();
-      final list = await repo.getTopCustomers(
-        5,
-        startDate: start,
-        endDate: end,
-      );
-      if (mounted) {
-        setState(() {
-          _customList = list;
-          _isLoading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _customList = widget.customers;
-          _isLoading = false;
-        });
-      }
-    }
+    final repo = sl<CustomersRepository>();
+    final result = await repo.getTopCustomers(5, startDate: start, endDate: end);
+    if (!mounted) return;
+    result.fold(
+      (_) => setState(() {
+        _customList = widget.customers;
+        _isLoading = false;
+      }),
+      (list) => setState(() {
+        _customList = list;
+        _isLoading = false;
+      }),
+    );
   }
 
   String get _periodSubtitle {

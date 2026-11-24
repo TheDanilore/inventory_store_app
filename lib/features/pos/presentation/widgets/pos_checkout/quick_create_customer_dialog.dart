@@ -119,38 +119,39 @@ class _QuickCreateCustomerDialogState extends State<QuickCreateCustomerDialog> {
       _errorMessage = null;
     });
 
-    try {
-      final createCustomerUC = sl<CreateCustomerUseCase>();
-      final newCustomer = await createCustomerUC.call(
-        fullName: _nameCtrl.text.trim(),
-        phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
-        documentNumber:
-            _docNumberCtrl.text.trim().isEmpty
-                ? null
-                : _docNumberCtrl.text.trim(),
-        documentType: _docType,
-      );
+    final createCustomerUC = sl<CreateCustomerUseCase>();
+    final result = await createCustomerUC.call(
+      fullName: _nameCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+      documentNumber:
+          _docNumberCtrl.text.trim().isEmpty
+              ? null
+              : _docNumberCtrl.text.trim(),
+      documentType: _docType,
+    );
 
-      if (mounted) {
-        Navigator.pop(context, newCustomer);
-      }
-    } catch (e) {
-      if (mounted) {
+    if (!mounted) return;
+    result.fold(
+      (failure) {
         setState(() {
           _isLoading = false;
-          final err = e.toString().toLowerCase();
-          if (err.contains('unique') ||
+          final err = failure.message.toLowerCase();
+          if (failure.code == '23505' ||
+              err.contains('unique') ||
               err.contains('duplicate') ||
-              err.contains('document_number')) {
+              err.contains('document') ||
+              err.contains('documento')) {
             _errorMessage =
                 'Ya existe un cliente registrado con este documento.';
           } else {
-            _errorMessage =
-                'No se pudo registrar el cliente. Intente nuevamente.';
+            _errorMessage = failure.message;
           }
         });
-      }
-    }
+      },
+      (newCustomer) {
+        Navigator.pop(context, newCustomer);
+      },
+    );
   }
 
   @override

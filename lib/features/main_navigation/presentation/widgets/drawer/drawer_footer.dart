@@ -9,6 +9,7 @@ import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.d
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart'
     as auth_state;
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/drawer/drawer_models.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/sidebar/admin_sidebar_models.dart';
 
 /// Pie del Drawer con información del perfil actual y acción de cierre de sesión.
 class DrawerFooterWidget extends StatelessWidget {
@@ -77,7 +78,8 @@ class DrawerFooterWidget extends StatelessWidget {
                                   )
                                   : null,
                           child:
-                              data.avatarUrl == null
+                              (data.avatarUrl == null ||
+                                      data.avatarUrl!.isEmpty)
                                   ? Icon(
                                     Icons.person_rounded,
                                     color:
@@ -149,6 +151,7 @@ class DrawerFooterWidget extends StatelessWidget {
                               }
                               // Limpia el estado de navegación en memoria para la siguiente sesión
                               DrawerNavigationMemory.reset();
+                              SidebarNavigationMemory.reset();
                               await authCubit.logout();
                             } catch (e, st) {
                               LoggerService.e(

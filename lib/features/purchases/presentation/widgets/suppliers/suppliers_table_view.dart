@@ -8,17 +8,17 @@ import 'package:url_launcher/url_launcher.dart';
 
 class SuppliersTableView extends StatefulWidget {
   final List<SupplierEntity> suppliers;
-  final SupplierEntity? selectedSupplier;
   final Function(SupplierEntity) onEdit;
   final Function(SupplierEntity) onToggleStatus;
+  final ValueChanged<List<SupplierEntity>>? onBulkToggleStatus;
   final AdminTablePaginationConfig? paginationConfig;
 
   const SuppliersTableView({
     super.key,
     required this.suppliers,
-    this.selectedSupplier,
     required this.onEdit,
     required this.onToggleStatus,
+    this.onBulkToggleStatus,
     this.paginationConfig,
   });
 
@@ -27,9 +27,26 @@ class SuppliersTableView extends StatefulWidget {
 }
 
 class _SuppliersTableViewState extends State<SuppliersTableView> {
+  static final RegExp _whatsappCleanRegExp = RegExp(r'[^\d+]');
+
   final Set<Object> _selectedIds = {};
   String? _sortColumnId;
   bool _isSortAscending = true;
+  late List<SupplierEntity> _sortedSuppliers;
+
+  @override
+  void initState() {
+    super.initState();
+    _sortedSuppliers = _computeSortedSuppliers();
+  }
+
+  @override
+  void didUpdateWidget(covariant SuppliersTableView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.suppliers, widget.suppliers)) {
+      _sortedSuppliers = _computeSortedSuppliers();
+    }
+  }
 
   Future<void> _launchUrl(String urlString) async {
     final uri = Uri.tryParse(urlString);
@@ -46,7 +63,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
 
   void _openWhatsApp(String phone) {
     if (phone.isNotEmpty) {
-      final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+      final cleanPhone = phone.replaceAll(_whatsappCleanRegExp, '');
       _launchUrl('https://wa.me/$cleanPhone');
     }
   }
@@ -66,7 +83,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
     );
   }
 
-  List<SupplierEntity> _getSortedSuppliers() {
+  List<SupplierEntity> _computeSortedSuppliers() {
     if (_sortColumnId == null) return widget.suppliers;
     final list = List<SupplierEntity>.from(widget.suppliers);
     list.sort((a, b) {
@@ -96,16 +113,15 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
 
   @override
   Widget build(BuildContext context) {
-    final sortedList = _getSortedSuppliers();
-
     return AdminProTable<SupplierEntity>(
-      items: sortedList,
+      items: _sortedSuppliers,
       itemId: (s) => s.id,
       selectedIds: _selectedIds,
       onSelectionChanged: (newSet) {
         setState(() {
-          _selectedIds.clear();
-          _selectedIds.addAll(newSet);
+          _selectedIds
+            ..clear()
+            ..addAll(newSet);
         });
       },
       sortColumnId: _sortColumnId,
@@ -114,6 +130,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
         setState(() {
           _sortColumnId = colId;
           _isSortAscending = isAsc;
+          _sortedSuppliers = _computeSortedSuppliers();
         });
       },
       paginationConfig: widget.paginationConfig,
@@ -139,20 +156,18 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
           label: 'Alternar Estado',
           icon: Icons.swap_horiz_rounded,
           onPressed: (selectedItems) {
-            for (final s in selectedItems) {
-              widget.onToggleStatus(s);
+            if (widget.onBulkToggleStatus != null) {
+              widget.onBulkToggleStatus!(selectedItems);
+            } else {
+              for (final s in selectedItems) {
+                widget.onToggleStatus(s);
+              }
             }
-            AppSnackbar.show(
-              context,
-              message:
-                  'Se actualizó el estado de ${selectedItems.length} proveedores',
-              type: SnackbarType.info,
-            );
+            setState(() => _selectedIds.clear());
           },
         ),
       ],
       columns: [
-        // 1. PROVEEDOR / RAZÓN SOCIAL
         AdminTableColumn<SupplierEntity>(
           id: 'name',
           label: 'Proveedor / Razón Social',
@@ -244,8 +259,6 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
             );
           },
         ),
-
-        // 2. CONTACTO COMERCIAL
         AdminTableColumn<SupplierEntity>(
           id: 'contact',
           label: 'Contacto Comercial',
@@ -287,8 +300,6 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
             );
           },
         ),
-
-        // 3. CANALES DIRECTOS
         AdminTableColumn<SupplierEntity>(
           id: 'channels',
           label: 'Canales Directos',
@@ -338,8 +349,6 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
             );
           },
         ),
-
-        // 4. DIRECCIÓN
         AdminTableColumn<SupplierEntity>(
           id: 'address',
           label: 'Dirección',
@@ -361,8 +370,6 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
             );
           },
         ),
-
-        // 5. ESTADO
         AdminTableColumn<SupplierEntity>(
           id: 'status',
           label: 'Estado',
@@ -425,8 +432,6 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
             );
           },
         ),
-
-        // 6. ACCIONES
         AdminTableColumn<SupplierEntity>(
           id: 'actions',
           label: 'Acciones',

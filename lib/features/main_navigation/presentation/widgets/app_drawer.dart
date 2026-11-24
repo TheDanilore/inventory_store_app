@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
-import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart'
     as auth_state;
@@ -15,17 +13,17 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/drawer/drawer_item_tile.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/drawer/drawer_models.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/drawer/drawer_pos_button.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/sidebar/admin_menu_builder.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/sidebar/admin_sidebar_models.dart';
 
-// Re-exportar modelos para mantener compatibilidad con cualquier archivo dependiente
+// Re-exportar modelos para mantener compatibilidad con cualquier archivo dependiente.
 export 'package:inventory_store_app/features/main_navigation/presentation/widgets/drawer/drawer_models.dart';
 
 /// Menú lateral (Drawer) optimizado para dispositivos móviles y tablets.
 ///
-/// Arquitectura de alto rendimiento:
-/// - Rebuild trees aislados mediante `BlocSelector` para permisos y configuración.
-/// - Cero asignación de AnimationControllers en cascada para fluidez en gama baja.
-/// - Decodificación de mapas de bits limitada para un consumo mínimo de RAM/VRAM.
-/// - Retención de estado de scroll y colapso de grupos sin mutaciones en fase de build.
+/// Consume [AdminMenuBuilder] como fuente única de verdad RBAC sin escalar
+/// privilegios visuales para colaboradores no-admin, resuelve `currentPath`
+/// una sola vez y evita animaciones/subárboles ocultos en RAM.
 class AppDrawer extends StatefulWidget {
   final bool isAdmin;
   const AppDrawer({super.key, this.isAdmin = false});
@@ -59,235 +57,73 @@ class _AppDrawerState extends State<AppDrawer> {
     super.dispose();
   }
 
+  List<DrawerSubItem> _toDrawerSubItems(
+    BuildContext context,
+    List<AdminSidebarItem> items,
+  ) {
+    return [
+      for (final item in items)
+        DrawerSubItem(
+          icon: item.icon,
+          title: item.title,
+          routePath: item.routePath,
+          onTap: () {
+            Navigator.pop(context);
+            context.go(item.routePath);
+          },
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currentPath =
+        GoRouter.maybeOf(
+          context,
+        )?.routerDelegate.currentConfiguration.uri.path ??
+        '';
 
-    // Selector granular: solo reconstruir el árbol de navegación si cambian permisos o admin
     return BlocSelector<
       AuthCubit,
       auth_state.AuthState,
       ({bool isAdmin, Set<String> permissions})
     >(
-      selector:
-          (state) => (
-            isAdmin: widget.isAdmin || (state.currentUser?.isAdmin ?? false),
-            permissions: state.currentUser?.permissions ?? const <String>{},
-          ),
+      selector: (state) {
+        final user = state.currentUser;
+        return (
+          isAdmin: user != null ? user.isAdmin : widget.isAdmin,
+          permissions: user?.permissions ?? const <String>{},
+        );
+      },
       builder: (context, authData) {
-        final isAdmin = authData.isAdmin;
-        final perms = authData.permissions;
+        final loyaltyEnabled = context.select<AppConfigCubit, bool>(
+          (c) => c.state.businessInfo?.loyaltyGlobalEnabled ?? false,
+        );
 
-        bool can(String perm) => isAdmin || perms.contains(perm);
-        bool canAny(Iterable<String> checkPerms) =>
-            isAdmin || checkPerms.any((p) => perms.contains(p));
+        final menu = AdminMenuBuilder.buildMenu(
+          isAdmin: authData.isAdmin,
+          permissions: authData.permissions,
+          loyaltyEnabled: loyaltyEnabled,
+        );
 
-        final canViewCatalog = canAny([
-          AppPermissions.productsView,
-          AppPermissions.inventoryView,
-        ]);
-        final canViewOrders = canAny([
-          AppPermissions.posView,
-          AppPermissions.posSale,
-        ]);
-
-        final inventoryChildren = <DrawerSubItem>[
-          if (can(AppPermissions.productsView))
-            DrawerSubItem(
-              icon: Icons.category_outlined,
-              title: 'Productos',
-              routePath: '/products',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/products');
-              },
-            ),
-          if (can(AppPermissions.inventoryView))
-            DrawerSubItem(
-              icon: Icons.grid_view_rounded,
-              title: 'Stock inventario',
-              routePath: '/inventory',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/inventory');
-              },
-            ),
-          if (can(AppPermissions.inventoryKardex))
-            DrawerSubItem(
-              icon: Icons.article_outlined,
-              title: 'Kardex',
-              routePath: '/kardex',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/kardex');
-              },
-            ),
-          if (can(AppPermissions.inventoryExits))
-            DrawerSubItem(
-              icon: Icons.remove_rounded,
-              title: 'Salidas inventario',
-              routePath: '/inventory-exits',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/inventory-exits');
-              },
-            ),
-        ];
-
-        final purchasesChildren = <DrawerSubItem>[
-          if (isAdmin ||
-              canAny([
-                AppPermissions.purchasesView,
-                AppPermissions.purchasesCreate,
-                AppPermissions.purchasesReceive,
-              ]))
-            DrawerSubItem(
-              icon: Icons.receipt_long_rounded,
-              title: 'Órdenes de compra',
-              routePath: '/purchase-orders',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/purchase-orders');
-              },
-            ),
-          if (isAdmin || can(AppPermissions.inventoryEntries))
-            DrawerSubItem(
-              icon: Icons.add_rounded,
-              title: 'Entradas inventario',
-              routePath: '/inventory-entries',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/inventory-entries');
-              },
-            ),
-          if (isAdmin ||
-              canAny([
-                AppPermissions.purchasesView,
-                AppPermissions.reportsFinancial,
-              ]))
-            DrawerSubItem(
-              icon: Icons.credit_score_rounded,
-              title: 'Créditos proveedores',
-              routePath: '/supplier-credits',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/supplier-credits');
-              },
-            ),
-          if (isAdmin ||
-              canAny([
-                AppPermissions.suppliersView,
-                AppPermissions.suppliersManage,
-              ]))
-            DrawerSubItem(
-              icon: Icons.local_shipping_outlined,
-              title: 'Proveedores',
-              routePath: '/suppliers',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/suppliers');
-              },
-            ),
-        ];
-
-        final customersChildren = <DrawerSubItem>[
-          if (isAdmin ||
-              canAny([
-                AppPermissions.customersView,
-                AppPermissions.customersManage,
-                AppPermissions.posView,
-                AppPermissions.posSale,
-              ])) ...[
-            DrawerSubItem(
-              icon: Icons.person_outline_rounded,
-              title: 'Clientes',
-              routePath: '/customers',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/customers');
-              },
-            ),
-            if (isAdmin ||
-                canAny([
-                  AppPermissions.creditsManage,
-                  AppPermissions.reportsFinancial,
-                ]))
-              DrawerSubItem(
-                icon: Icons.credit_score_rounded,
-                title: 'Créditos clientes',
-                routePath: '/customer-credits',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.go('/customer-credits');
-                },
-              ),
-          ],
-        ];
-
-        final mastersChildren = <DrawerSubItem>[
-          if (isAdmin ||
-              canAny([
-                AppPermissions.productsCreate,
-                AppPermissions.productsEdit,
-                AppPermissions.categoriesManage,
-                AppPermissions.brandsManage,
-              ])) ...[
-            if (isAdmin ||
-                canAny([
-                  AppPermissions.categoriesManage,
-                  AppPermissions.productsEdit,
-                ]))
-              DrawerSubItem(
-                icon: Icons.category_outlined,
-                title: 'Categorías',
-                routePath: '/categories',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.go('/categories');
-                },
-              ),
-            if (isAdmin ||
-                canAny([
-                  AppPermissions.brandsManage,
-                  AppPermissions.productsEdit,
-                ]))
-              DrawerSubItem(
-                icon: Icons.branding_watermark_outlined,
-                title: 'Marcas',
-                routePath: '/brands',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.go('/brands');
-                },
-              ),
-            DrawerSubItem(
-              icon: Icons.local_offer,
-              title: 'Atributos',
-              routePath: '/attributes',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/attributes');
-              },
-            ),
-            DrawerSubItem(
-              icon: Icons.science_outlined,
-              title: 'Ingredientes activos',
-              routePath: '/active-ingredients',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/active-ingredients');
-              },
-            ),
-          ],
-        ];
-
-        final hasCommercialSection =
-            canViewOrders ||
-            inventoryChildren.isNotEmpty ||
-            purchasesChildren.isNotEmpty ||
-            customersChildren.isNotEmpty;
-
-        final canViewSettings = can(AppPermissions.settingsView);
+        final inventorySubItems = _toDrawerSubItems(
+          context,
+          menu.inventoryChildren,
+        );
+        final purchasesSubItems = _toDrawerSubItems(
+          context,
+          menu.purchasesChildren,
+        );
+        final customersSubItems = _toDrawerSubItems(
+          context,
+          menu.customersChildren,
+        );
+        final mastersSubItems = _toDrawerSubItems(
+          context,
+          menu.mastersChildren,
+        );
+        final systemSubItems = _toDrawerSubItems(context, menu.systemChildren);
 
         return Drawer(
           backgroundColor: AppColors.sideBg(context),
@@ -300,10 +136,7 @@ class _AppDrawerState extends State<AppDrawer> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header con bitmap optimizado
-              DrawerHeaderWidget(isAdmin: isAdmin),
-
-              // Cuerpo con Scrollbar nativo y límite de repintado
+              DrawerHeaderWidget(isAdmin: authData.isAdmin),
               Expanded(
                 child: RepaintBoundary(
                   child: RawScrollbar(
@@ -321,6 +154,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       children: [
                         _buildSectionTitle(context, 'MENÚ PRINCIPAL'),
                         DrawerItemTile(
+                          currentPath: currentPath,
                           item: DrawerItem(
                             icon: Icons.bar_chart_rounded,
                             title: 'Dashboard',
@@ -331,8 +165,9 @@ class _AppDrawerState extends State<AppDrawer> {
                             },
                           ),
                         ),
-                        if (canViewCatalog)
+                        if (menu.canViewCatalog)
                           DrawerItemTile(
+                            currentPath: currentPath,
                             item: DrawerItem(
                               icon: Icons.grid_view_rounded,
                               title: 'Catálogo',
@@ -343,15 +178,13 @@ class _AppDrawerState extends State<AppDrawer> {
                               },
                             ),
                           ),
-
-                        // Gestión Comercial
-                        if (hasCommercialSection) ...[
+                        if (menu.hasCommercialSection) ...[
                           const _SectionDivider(),
                           _buildSectionTitle(context, 'GESTIÓN COMERCIAL'),
                         ],
-
-                        if (canViewOrders)
+                        if (menu.canViewOrders)
                           DrawerItemTile(
+                            currentPath: currentPath,
                             item: DrawerItem(
                               icon: Icons.receipt_long_rounded,
                               title: 'Pedidos',
@@ -363,153 +196,65 @@ class _AppDrawerState extends State<AppDrawer> {
                               },
                             ),
                           ),
-
-                        if (inventoryChildren.isNotEmpty)
+                        if (inventorySubItems.isNotEmpty)
                           DrawerExpandableGroup(
+                            currentPath: currentPath,
                             item: DrawerItem(
                               icon: Icons.inventory_2_outlined,
                               title: 'Inventario',
                               routePath: '',
-                              children: inventoryChildren,
+                              children: inventorySubItems,
                             ),
                           ),
-
-                        if (purchasesChildren.isNotEmpty)
+                        if (purchasesSubItems.isNotEmpty)
                           DrawerExpandableGroup(
+                            currentPath: currentPath,
                             item: DrawerItem(
                               icon: Icons.shopping_bag_outlined,
                               title: 'Compras',
                               routePath: '',
-                              children: purchasesChildren,
+                              children: purchasesSubItems,
                             ),
                           ),
-
-                        if (customersChildren.isNotEmpty)
+                        if (customersSubItems.isNotEmpty)
                           DrawerExpandableGroup(
+                            currentPath: currentPath,
                             item: DrawerItem(
                               icon: Icons.people_outline_rounded,
                               title: 'Clientes y Créditos',
                               routePath: '',
-                              children: customersChildren,
+                              children: customersSubItems,
                             ),
                           ),
-
-                        // Configuración ERP
-                        BlocSelector<AppConfigCubit, AppConfigState, bool>(
-                          selector:
-                              (s) =>
-                                  s.businessInfo?.loyaltyGlobalEnabled ?? false,
-                          builder: (context, loyaltyEnabled) {
-                            final systemChildren = <DrawerSubItem>[
-                              if (can(AppPermissions.usersView))
-                                DrawerSubItem(
-                                  icon: Icons.account_circle_outlined,
-                                  title: 'Usuarios',
-                                  routePath: '/users',
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    context.go('/users');
-                                  },
-                                ),
-                              if (canAny([
-                                AppPermissions.rolesManage,
-                                AppPermissions.permissionsAssign,
-                              ]))
-                                DrawerSubItem(
-                                  icon: Icons.shield_outlined,
-                                  title: 'Roles y Permisos',
-                                  routePath: '/roles',
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    context.go('/roles');
-                                  },
-                                ),
-                              if (isAdmin ||
-                                  canAny([
-                                    AppPermissions.financialAccountsManage,
-                                    AppPermissions.reportsFinancial,
-                                    AppPermissions.settingsView,
-                                  ]))
-                                DrawerSubItem(
-                                  icon: Icons.account_balance_wallet_outlined,
-                                  title: 'Cuentas',
-                                  routePath: '/financial-accounts',
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    context.go('/financial-accounts');
-                                  },
-                                ),
-                              if (isAdmin ||
-                                  canAny([
-                                    AppPermissions.warehousesManage,
-                                    AppPermissions.inventoryTransfer,
-                                    AppPermissions.settingsView,
-                                  ]))
-                                DrawerSubItem(
-                                  icon: Icons.warehouse_outlined,
-                                  title: 'Almacenes',
-                                  routePath: '/warehouses',
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    context.go('/warehouses');
-                                  },
-                                ),
-                              if (loyaltyEnabled &&
-                                  can(AppPermissions.settingsEdit))
-                                DrawerSubItem(
-                                  icon: Icons.stars_rounded,
-                                  title: 'Puntos y Monedas',
-                                  routePath: '/points-settings',
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    context.go('/points-settings');
-                                  },
-                                ),
-                            ];
-
-                            final hasErpSection =
-                                mastersChildren.isNotEmpty ||
-                                systemChildren.isNotEmpty;
-
-                            return Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (hasErpSection) ...[
-                                  const _SectionDivider(),
-                                  _buildSectionTitle(
-                                    context,
-                                    'CONFIGURACIÓN ERP',
-                                  ),
-                                ],
-                                if (mastersChildren.isNotEmpty)
-                                  DrawerExpandableGroup(
-                                    item: DrawerItem(
-                                      icon: Icons.category_outlined,
-                                      title: 'Maestros / Catálogos',
-                                      routePath: '',
-                                      children: mastersChildren,
-                                    ),
-                                  ),
-                                if (systemChildren.isNotEmpty)
-                                  DrawerExpandableGroup(
-                                    item: DrawerItem(
-                                      icon: Icons.settings_outlined,
-                                      title: 'Configuración del Sistema',
-                                      routePath: '',
-                                      children: systemChildren,
-                                    ),
-                                  ),
-                              ],
-                            );
-                          },
-                        ),
-
-                        // Sistema & Soporte
+                        if (menu.hasErpSection) ...[
+                          const _SectionDivider(),
+                          _buildSectionTitle(context, 'CONFIGURACIÓN ERP'),
+                        ],
+                        if (mastersSubItems.isNotEmpty)
+                          DrawerExpandableGroup(
+                            currentPath: currentPath,
+                            item: DrawerItem(
+                              icon: Icons.category_outlined,
+                              title: 'Maestros / Catálogos',
+                              routePath: '',
+                              children: mastersSubItems,
+                            ),
+                          ),
+                        if (systemSubItems.isNotEmpty)
+                          DrawerExpandableGroup(
+                            currentPath: currentPath,
+                            item: DrawerItem(
+                              icon: Icons.settings_outlined,
+                              title: 'Configuración del Sistema',
+                              routePath: '',
+                              children: systemSubItems,
+                            ),
+                          ),
                         const _SectionDivider(),
                         _buildSectionTitle(context, 'SISTEMA & SOPORTE'),
-                        if (canViewSettings)
+                        if (menu.canViewSettings)
                           DrawerItemTile(
+                            currentPath: currentPath,
                             item: DrawerItem(
                               icon: Icons.settings_outlined,
                               title: 'Configuraciones',
@@ -521,6 +266,7 @@ class _AppDrawerState extends State<AppDrawer> {
                             ),
                           ),
                         DrawerItemTile(
+                          currentPath: currentPath,
                           item: DrawerItem(
                             icon: Icons.help_outline_rounded,
                             title: 'Ayuda y Soporte',
@@ -536,13 +282,9 @@ class _AppDrawerState extends State<AppDrawer> {
                   ),
                 ),
               ),
-
-              // Botón POS de acceso rápido
               const DrawerPosButton(),
-
-              // Pie de página con perfil y acción de logout
               Divider(height: 1, color: AppColors.sideBorder(context)),
-              DrawerFooterWidget(isAdmin: isAdmin),
+              DrawerFooterWidget(isAdmin: authData.isAdmin),
             ],
           ),
         );

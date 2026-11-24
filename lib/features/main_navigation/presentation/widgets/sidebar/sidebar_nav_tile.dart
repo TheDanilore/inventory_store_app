@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/sidebar/admin_menu_builder.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/sidebar/admin_sidebar_models.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/sidebar/sidebar_collapsible_label.dart';
 import 'package:url_launcher/link.dart';
 
 /// Baldosa unificada de navegación para ítems de primer nivel y sub-ítems.
-/// Elimina más de 250 líneas de código duplicado y reemplaza listeners
-/// pesados de puntero por interacciones nativas y optimizadas de [InkWell].
+/// Sin [AnimationController]s ni tickers por ítem para fluidez en equipos antiguos.
 class SidebarNavTile extends StatelessWidget {
   final AdminSidebarItem item;
   final bool isCollapsed;
@@ -23,22 +22,8 @@ class SidebarNavTile extends StatelessWidget {
     this.isSubItem = false,
   });
 
-  static bool isItemActive(String routePath, String currentPath) {
-    if (routePath.isEmpty) return false;
-    if (currentPath == routePath) return true;
-    if (routePath == '/' &&
-        (currentPath == '/dashboard' || currentPath == '/')) {
-      return true;
-    }
-    if (routePath == '/catalog' &&
-        (currentPath == '/catalog' || currentPath.startsWith('/catalog/'))) {
-      return true;
-    }
-    if (routePath != '/' && currentPath.startsWith('$routePath/')) {
-      return true;
-    }
-    return false;
-  }
+  static bool isItemActive(String routePath, String currentPath) =>
+      AdminMenuBuilder.isRouteActive(routePath, currentPath);
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +36,11 @@ class SidebarNavTile extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         child: Material(
-          color: Colors.transparent,
+          color:
+              isActive
+                  ? (isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF))
+                  : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
           child: InkWell(
             borderRadius: BorderRadius.circular(10),
             onTap: () {
@@ -63,17 +52,9 @@ class SidebarNavTile extends StatelessWidget {
             },
             hoverColor:
                 isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
+            child: Container(
               height: tileHeight,
               decoration: BoxDecoration(
-                color:
-                    isActive
-                        ? (isDark
-                            ? const Color(0xFF1E293B)
-                            : const Color(0xFFEFF6FF))
-                        : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
                 border:
                     isActive
@@ -84,62 +65,42 @@ class SidebarNavTile extends StatelessWidget {
                                   : const Color(0xFFDBEAFE),
                           width: 1,
                         )
-                        : Border.all(color: Colors.transparent, width: 1),
+                        : null,
               ),
               padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 0 : 10),
-              child: ClipRect(
-                child: Row(
-                  mainAxisAlignment:
-                      isCollapsed
-                          ? MainAxisAlignment.center
-                          : MainAxisAlignment.start,
-                  children: [
-                    // Indicador vertical de ítem activo (Stripe / Linear)
-                    if (!isCollapsed && isActive)
-                      Container(
-                            width: 3.5,
-                            height: isSubItem ? 16 : 18,
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF3B82F6),
-                              borderRadius: BorderRadius.circular(3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFF3B82F6,
-                                  ).withValues(alpha: 0.4),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
-                          )
-                          .animate()
-                          .scaleY(
-                            begin: 0,
-                            end: 1,
-                            duration: 180.ms,
-                            curve: Curves.easeOutCubic,
-                          )
-                          .fadeIn(duration: 140.ms),
-
-                    Icon(
-                      item.icon,
-                      size: iconSize,
-                      color:
-                          isActive
-                              ? (isDark
-                                  ? const Color(0xFF60A5FA)
-                                  : const Color(0xFF2563EB))
-                              : (isDark
-                                  ? AppColors.darkTextSecondary
-                                  : const Color(0xFF64748B)),
+              child: Row(
+                mainAxisAlignment:
+                    isCollapsed
+                        ? MainAxisAlignment.center
+                        : MainAxisAlignment.start,
+                children: [
+                  if (!isCollapsed && isActive)
+                    Container(
+                      width: 3.5,
+                      height: isSubItem ? 16 : 18,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
                     ),
-
-                    Flexible(
+                  Icon(
+                    item.icon,
+                    size: iconSize,
+                    color:
+                        isActive
+                            ? (isDark
+                                ? const Color(0xFF60A5FA)
+                                : const Color(0xFF2563EB))
+                            : (isDark
+                                ? AppColors.darkTextSecondary
+                                : const Color(0xFF64748B)),
+                  ),
+                  if (!isCollapsed)
+                    Expanded(
                       child: CollapsibleLabel(
                         collapsed: isCollapsed,
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
                             const SizedBox(width: 10),
                             Expanded(
@@ -173,8 +134,7 @@ class SidebarNavTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
@@ -182,8 +142,8 @@ class SidebarNavTile extends StatelessWidget {
       );
     }
 
-    Widget tile;
-    if (item.routePath.isNotEmpty) {
+    final Widget tile;
+    if (item.routePath.isNotEmpty && GoRouter.maybeOf(context) != null) {
       tile = Link(
         uri: Uri.parse(item.routePath),
         target: LinkTarget.self,
@@ -201,13 +161,6 @@ class SidebarNavTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF0F172A),
           borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 8,
-              offset: const Offset(2, 2),
-            ),
-          ],
         ),
         textStyle: const TextStyle(
           color: Colors.white,

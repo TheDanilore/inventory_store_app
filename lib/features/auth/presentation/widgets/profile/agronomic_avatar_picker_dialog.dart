@@ -1,8 +1,10 @@
 import 'dart:typed_data';
-import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_modal_sheet.dart';
 
 class AgronomicAvatarPreset {
   final String id;
@@ -22,7 +24,8 @@ class AgronomicAvatarPreset {
   });
 }
 
-/// Selector interactivo y premium de Avatares Agrícolas y Fotos de Perfil
+/// Selector interactivo camaleónico de Avatares Agrícolas y Fotos de Perfil.
+/// Se adapta entre BottomSheet arrastrable en móvil y Diálogo centrado con Blur/ESC en Tablet y Desktop.
 class AgronomicAvatarPickerDialog extends StatefulWidget {
   final String? currentAvatarUrl;
   final String userInitial;
@@ -100,51 +103,18 @@ class AgronomicAvatarPickerDialog extends StatefulWidget {
     required void Function(String? newAvatarUrl, Uint8List? imageBytes)
     onAvatarSelected,
   }) {
-    final isDesktop = MediaQuery.of(context).size.width >= 700;
-
-    if (isDesktop) {
-      return showDialog(
-        context: context,
-        builder:
-            (ctx) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              backgroundColor: Colors.white,
-              elevation: 16,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 580,
-                  maxHeight: 720,
-                ),
-                child: AgronomicAvatarPickerDialog(
-                  currentAvatarUrl: currentAvatarUrl,
-                  userInitial: userInitial,
-                  onAvatarSelected: onAvatarSelected,
-                ),
-              ),
-            ),
-      );
-    } else {
-      return showModalBottomSheet(
-        context: context,
-        useRootNavigator: true,
-        isScrollControlled: true,
-        backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        builder:
-            (ctx) => FractionallySizedBox(
-              heightFactor: 0.88,
-              child: AgronomicAvatarPickerDialog(
-                currentAvatarUrl: currentAvatarUrl,
-                userInitial: userInitial,
-                onAvatarSelected: onAvatarSelected,
-              ),
-            ),
-      );
-    }
+    return AdaptiveModalSheet.show<void>(
+      context,
+      maxWidth: 580,
+      maxHeightFactor: 0.88,
+      barrierLabel: 'Personalizar avatar',
+      builder:
+          (ctx) => AgronomicAvatarPickerDialog(
+            currentAvatarUrl: currentAvatarUrl,
+            userInitial: userInitial,
+            onAvatarSelected: onAvatarSelected,
+          ),
+    );
   }
 
   @override
@@ -184,6 +154,7 @@ class _AgronomicAvatarPickerDialogState
       );
       if (picked != null) {
         final bytes = await picked.readAsBytes();
+        AppFeedbackService.lightImpact();
         setState(() {
           _uploadedBytes = bytes;
           _selectedUrl = null;
@@ -194,6 +165,7 @@ class _AgronomicAvatarPickerDialogState
   }
 
   void _handleApply() {
+    AppFeedbackService.mediumImpact();
     if (_isResetToInitials) {
       widget.onAvatarSelected('', null);
     } else if (_uploadedBytes != null) {
@@ -206,99 +178,127 @@ class _AgronomicAvatarPickerDialogState
 
   @override
   Widget build(BuildContext context) {
+    final isDialog = AdaptiveModalSheet.isDialogMode(context);
+    final isDark = AppColors.isDark(context);
+    final successColor = AppColors.successText(context);
+
     return Column(
+      mainAxisSize: MainAxisSize.max,
       children: [
-        // ── Header con vista previa actual ─────────────────────────────
+        // ── Cabecera ─────────────────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 20, 14),
+          padding: EdgeInsets.fromLTRB(20, isDialog ? 20 : 8, 14, 14),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(9),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF065F46).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.face_retouching_natural_rounded,
-                      color: Color(0xFF065F46),
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Personalizar Avatar',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                          letterSpacing: -0.4,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Elige un rol agrícola o sube tu propia foto',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: AppColors.successBg(context),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.successBorder(context)),
+                ),
+                child: Icon(
+                  Icons.face_retouching_natural_rounded,
+                  color: successColor,
+                  size: 22,
+                ),
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Personalizar Avatar',
+                      style: TextStyle(
+                        fontSize: 17.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.txtPrimary(context),
+                        letterSpacing: -0.4,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Elige un rol agrícola o sube tu propia foto',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.txtSecondary(context),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (isDialog) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfSubtle(context),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.brdSubtle(context)),
+                  ),
+                  child: Text(
+                    'ESC',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.txtMuted(context),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
               IconButton(
+                tooltip: 'Cerrar',
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(
+                icon: Icon(
                   Icons.close_rounded,
                   size: 20,
-                  color: Color(0xFF64748B),
+                  color: AppColors.txtSecondary(context),
                 ),
               ),
             ],
           ),
         ),
 
-        // ── Tab Bar (Predeterminados Agrícolas vs Foto Personalizada) ──
+        // ── Tab Bar (Predeterminados Agrícolas vs Subir Foto) ───────────
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Container(
-            height: 42,
+            height: 44,
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.surfSubtle(context),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: AppColors.brd(context)),
             ),
             child: TabBar(
               controller: _tabController,
               indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
+              onTap: (_) => AppFeedbackService.selectionClick(),
               indicator: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                color:
+                    isDark ? AppColors.darkSurfaceHighlight : AppColors.surface,
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(
+                  color:
+                      isDark ? AppColors.darkBorderSubtle : AppColors.border,
+                ),
               ),
-              labelColor: const Color(0xFF0F172A),
-              unselectedLabelColor: const Color(0xFF64748B),
+              labelColor: AppColors.txtPrimary(context),
+              unselectedLabelColor: AppColors.txtSecondary(context),
               labelStyle: const TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
               ),
               tabs: const [
                 Tab(
-                  iconMargin: EdgeInsets.zero,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -324,7 +324,7 @@ class _AgronomicAvatarPickerDialogState
         ),
         const SizedBox(height: 12),
 
-        // ── Contenido de las pestañas ──────────────────────────────────
+        // ── Contenido de pestañas ────────────────────────────────────────
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -332,75 +332,81 @@ class _AgronomicAvatarPickerDialogState
           ),
         ),
 
-        // ── Footer con Acciones ────────────────────────────────────────
-        const Divider(height: 1, color: Color(0xFFE2E8F0)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              TextButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _isResetToInitials = true;
-                    _selectedUrl = null;
-                    _uploadedBytes = null;
-                  });
-                },
-                icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text(
-                  'Usar iniciales',
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF64748B),
-                ),
-              ),
-              Row(
-                children: [
-                  OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF64748B),
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                    ),
-                    child: const Text(
-                      'Cancelar',
-                      style: TextStyle(fontSize: 12.5),
-                    ),
+        // ── Footer con SafeArea ──────────────────────────────────────────
+        Divider(height: 1, color: AppColors.dividerColor(context)),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    AppFeedbackService.selectionClick();
+                    setState(() {
+                      _isResetToInitials = true;
+                      _selectedUrl = null;
+                      _uploadedBytes = null;
+                    });
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text(
+                    'Usar iniciales',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(width: 10),
-                  FilledButton.icon(
-                    onPressed: _handleApply,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF065F46),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
-                      ),
-                    ),
-                    icon: const Icon(Icons.check_rounded, size: 16),
-                    label: const Text(
-                      'Aplicar Avatar',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                  style: TextButton.styleFrom(
+                    foregroundColor:
+                        _isResetToInitials
+                            ? AppColors.brandPrimarySoft(context)
+                            : AppColors.txtSecondary(context),
+                    minimumSize: const Size(44, 44),
                   ),
-                ],
-              ),
-            ],
+                ),
+                Row(
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.txtSecondary(context),
+                        side: BorderSide(color: AppColors.brdSubtle(context)),
+                        minimumSize: const Size(88, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                      ),
+                      child: const Text(
+                        'Cancelar',
+                        style: TextStyle(fontSize: 12.5),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    FilledButton.icon(
+                      onPressed: _handleApply,
+                      style: FilledButton.styleFrom(
+                        backgroundColor:
+                            isDark ? AppColors.successDark : AppColors.tealDark,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(132, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                      ),
+                      icon: const Icon(Icons.check_rounded, size: 16),
+                      label: const Text(
+                        'Aplicar Avatar',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -408,124 +414,40 @@ class _AgronomicAvatarPickerDialogState
   }
 
   Widget _buildPresetsTab() {
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 2.1,
-      ),
-      itemCount: AgronomicAvatarPickerDialog.presets.length,
-      itemBuilder: (context, index) {
-        final preset = AgronomicAvatarPickerDialog.presets[index];
-        final isSelected =
-            !_isResetToInitials &&
-            _uploadedBytes == null &&
-            _selectedUrl == preset.avatarUrl;
-
-        return InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            setState(() {
-              _selectedUrl = preset.avatarUrl;
-              _uploadedBytes = null;
-              _isResetToInitials = false;
-            });
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color:
-                  isSelected
-                      ? const Color(0xFFECFDF5)
-                      : const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color:
-                    isSelected
-                        ? const Color(0xFF059669)
-                        : const Color(0xFFE2E8F0),
-                width: isSelected ? 2 : 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color:
-                      isSelected
-                          ? const Color(0xFF059669).withValues(alpha: 0.12)
-                          : Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 26,
-                      backgroundColor: Colors.white,
-                      backgroundImage: CachedNetworkImageProvider(
-                        preset.avatarUrl,
-                      ),
-                    ),
-                    if (isSelected)
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(2.5),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF059669),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.check,
-                            size: 11,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        preset.title,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color:
-                              isSelected
-                                  ? const Color(0xFF065F46)
-                                  : const Color(0xFF0F172A),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        preset.role,
-                        style: const TextStyle(
-                          fontSize: 10.5,
-                          color: Color(0xFF64748B),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 430;
+        return GridView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: isNarrow ? 1 : 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 10,
+            childAspectRatio: isNarrow ? 3.8 : 2.15,
           ),
+          itemCount: AgronomicAvatarPickerDialog.presets.length,
+          itemBuilder: (context, index) {
+            final preset = AgronomicAvatarPickerDialog.presets[index];
+            final isSelected =
+                !_isResetToInitials &&
+                _uploadedBytes == null &&
+                _selectedUrl == preset.avatarUrl;
+
+            return _PresetAvatarTile(
+              preset: preset,
+              isSelected: isSelected,
+              disableAnimations: disableAnimations,
+              onTap: () {
+                AppFeedbackService.selectionClick();
+                setState(() {
+                  _selectedUrl = preset.avatarUrl;
+                  _uploadedBytes = null;
+                  _isResetToInitials = false;
+                });
+              },
+            );
+          },
         );
       },
     );
@@ -533,17 +455,19 @@ class _AgronomicAvatarPickerDialogState
 
   Widget _buildCustomPhotoTab() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
       child: Column(
         children: [
-          // Vista previa del avatar cargado
           Container(
-            width: 110,
-            height: 110,
+            width: 112,
+            height: 112,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFFF1F5F9),
-              border: Border.all(color: const Color(0xFFCBD5E1), width: 2),
+              color: AppColors.surfSubtle(context),
+              border: Border.all(
+                color: AppColors.brdSubtle(context),
+                width: 2,
+              ),
               image:
                   _uploadedBytes != null
                       ? DecorationImage(
@@ -554,72 +478,199 @@ class _AgronomicAvatarPickerDialogState
             ),
             child:
                 _uploadedBytes == null
-                    ? const Icon(
+                    ? Icon(
                       Icons.photo_camera_outlined,
                       size: 38,
-                      color: Color(0xFF94A3B8),
+                      color: AppColors.txtMuted(context),
                     )
                     : null,
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Sube una fotografía desde tu dispositivo',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF0F172A),
+              color: AppColors.txtPrimary(context),
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Formatos compatibles: JPG, PNG. Tamaño máximo recomendado: 5 MB.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.txtSecondary(context),
+            ),
           ),
           const SizedBox(height: 20),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 10,
             children: [
               OutlinedButton.icon(
                 onPressed: () => _pickImage(ImageSource.camera),
                 style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.txtPrimary(context),
+                  side: BorderSide(color: AppColors.brdSubtle(context)),
+                  minimumSize: const Size(136, 44),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
                   ),
                 ),
                 icon: const Icon(Icons.camera_alt_rounded, size: 16),
-                label: const Text(
-                  'Tomar Foto',
-                  style: TextStyle(fontSize: 12.5),
-                ),
+                label: const Text('Tomar Foto', style: TextStyle(fontSize: 13)),
               ),
-              const SizedBox(width: 12),
               FilledButton.icon(
                 onPressed: () => _pickImage(ImageSource.gallery),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: AppColors.brandPrimary(context),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(176, 44),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 12,
                   ),
                 ),
                 icon: const Icon(Icons.photo_library_rounded, size: 16),
                 label: const Text(
                   'Seleccionar de Galería',
-                  style: TextStyle(fontSize: 12.5),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PresetAvatarTile extends StatefulWidget {
+  final AgronomicAvatarPreset preset;
+  final bool isSelected;
+  final bool disableAnimations;
+  final VoidCallback onTap;
+
+  const _PresetAvatarTile({
+    required this.preset,
+    required this.isSelected,
+    required this.disableAnimations,
+    required this.onTap,
+  });
+
+  @override
+  State<_PresetAvatarTile> createState() => _PresetAvatarTileState();
+}
+
+class _PresetAvatarTileState extends State<_PresetAvatarTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final successColor = AppColors.successText(context);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration:
+              widget.disableAnimations
+                  ? Duration.zero
+                  : const Duration(milliseconds: 140),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color:
+                widget.isSelected
+                    ? AppColors.successBg(context)
+                    : (_hovered
+                        ? AppColors.surfHover(context)
+                        : AppColors.surfSubtle(context)),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color:
+                  widget.isSelected
+                      ? successColor
+                      : (_hovered
+                          ? AppColors.brdSubtle(context)
+                          : AppColors.brd(context)),
+              width: widget.isSelected ? 1.8 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 25,
+                    backgroundColor: AppColors.surf(context),
+                    backgroundImage: CachedNetworkImageProvider(
+                      widget.preset.avatarUrl,
+                    ),
+                  ),
+                  if (widget.isSelected)
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: AppColors.success,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.surf(context),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.check_rounded,
+                          size: 10,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      widget.preset.title,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color:
+                            widget.isSelected
+                                ? successColor
+                                : AppColors.txtPrimary(context),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.preset.role,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.txtSecondary(context),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

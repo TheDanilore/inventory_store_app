@@ -12,6 +12,7 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
   final RegisterCreditPaymentUseCase _registerCreditPaymentUseCase;
 
   static const int _movementsLimit = 20;
+  static const String _tag = 'CUSTOMER_CREDITS_CUBIT';
 
   CustomerCreditsCubit(
     this._getCreditAccountByCustomerUseCase,
@@ -21,97 +22,123 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
   ) : super(CustomerCreditsInitial());
 
   Future<void> loadCreditData(String customerId) async {
-    emit(CustomerCreditsLoading());
-    try {
-      final account = await _getCreditAccountByCustomerUseCase(customerId);
-      if (account != null) {
+    if (!isClosed) emit(CustomerCreditsLoading());
+
+    final accountResult = await _getCreditAccountByCustomerUseCase(customerId);
+    if (isClosed) return;
+
+    await accountResult.fold(
+      (failure) async {
+        LoggerService.e(
+          'Error cargando crédito del cliente $customerId: ${failure.message}',
+          tag: _tag,
+        );
+        emit(CustomerCreditsError(failure.message));
+      },
+      (account) async {
+        if (account == null) {
+          emit(
+            const CustomerCreditsError(
+              'El cliente no tiene línea de crédito.',
+            ),
+          );
+          return;
+        }
+
         final movementsResult = await _getCreditMovementsUseCase(
           creditId: account.id,
           limit: _movementsLimit,
           offset: 0,
         );
-        emit(
-          CustomerCreditsLoaded(
-            creditAccount: account,
-            movements: movementsResult.items,
-            hasReachedMaxMovements:
-                movementsResult.items.length >= movementsResult.totalCount ||
-                movementsResult.items.length < _movementsLimit,
-          ),
+        if (isClosed) return;
+
+        movementsResult.fold(
+          (failure) {
+            LoggerService.e(
+              'Error cargando movimientos del cliente $customerId: ${failure.message}',
+              tag: _tag,
+            );
+            emit(CustomerCreditsError(failure.message));
+          },
+          (data) {
+            emit(
+              CustomerCreditsLoaded(
+                creditAccount: account,
+                movements: data.items,
+                hasReachedMaxMovements:
+                    data.items.length >= data.totalCount ||
+                    data.items.length < _movementsLimit,
+              ),
+            );
+          },
         );
-      } else {
-        // No account
-        emit(
-          const CustomerCreditsError('El cliente no tiene línea de crédito.'),
-        );
-      }
-    } catch (e, st) {
-      LoggerService.e(
-        'Error cargando crédito del cliente: $customerId',
-        tag: 'CUSTOMER_CREDITS_CUBIT',
-        error: e,
-        stackTrace: st,
-      );
-      emit(CustomerCreditsError(e.toString()));
-    }
+      },
+    );
   }
 
   Future<void> loadMoreMovements() async {
     final currentState = state;
-    if (currentState is CustomerCreditsLoaded &&
-        !currentState.hasReachedMaxMovements) {
-      try {
-        final newMovementsResult = await _getCreditMovementsUseCase(
-          creditId: currentState.creditAccount.id,
-          limit: _movementsLimit,
-          offset: currentState.movements.length,
-        );
+    if (currentState is! CustomerCreditsLoaded ||
+        currentState.hasReachedMaxMovements) {
+      return;
+    }
+
+    final result = await _getCreditMovementsUseCase(
+      creditId: currentState.creditAccount.id,
+      limit: _movementsLimit,
+      offset: currentState.movements.length,
+    );
+    if (isClosed) return;
+
+    result.fold(
+      (failure) => LoggerService.w(
+        'Error cargando más movimientos de crédito: ${failure.message}',
+        tag: _tag,
+      ),
+      (newMovements) {
         final combinedMovements = [
           ...currentState.movements,
-          ...newMovementsResult.items,
+          ...newMovements.items,
         ];
         emit(
           currentState.copyWith(
             movements: combinedMovements,
             hasReachedMaxMovements:
-                combinedMovements.length >= newMovementsResult.totalCount ||
-                newMovementsResult.items.isEmpty,
+                combinedMovements.length >= newMovements.totalCount ||
+                newMovements.items.isEmpty,
           ),
         );
-      } catch (e, st) {
-        LoggerService.w(
-          'Error cargando más movimientos de crédito',
-          tag: 'CUSTOMER_CREDITS_CUBIT',
-          error: e,
-          stackTrace: st,
-        );
-      }
-    }
+      },
+    );
   }
 
   Future<void> createCreditAccount(String customerId, double limit) async {
-    try {
-      emit(CustomerCreditsLoading());
-      final account = await _createCreditAccountUseCase(
-        customerId: customerId,
-        creditLimit: limit,
-      );
-      emit(
-        CustomerCreditsLoaded(
-          creditAccount: account,
-          movements: const [],
-          hasReachedMaxMovements: true,
-        ),
-      );
-    } catch (e, st) {
-      LoggerService.e(
-        'Error creando cuenta de crédito para cliente: $customerId',
-        tag: 'CUSTOMER_CREDITS_CUBIT',
-        error: e,
-        stackTrace: st,
-      );
-      emit(CustomerCreditsError(e.toString()));
-    }
+    if (!isClosed) emit(CustomerCreditsLoading());
+
+    final result = await _createCreditAccountUseCase(
+      customerId: customerId,
+      creditLimit: limit,
+    );
+    if (isClosed) return;
+
+    result.fold(
+      (failure) {
+        LoggerService.e(
+          'Error creando cuenta de crédito para cliente $customerId: ${failure.message}',
+          tag: _tag,
+        );
+        emit(CustomerCreditsError(failure.message));
+      },
+      (account) {
+        emit(
+          CustomerCreditsLoaded(
+            creditAccount: account,
+            movements: const [],
+            hasReachedMaxMovements: true,
+          ),
+        );
+      },
+    );
   }
 
   Future<void> registerPayment({
@@ -120,32 +147,34 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
     String? orderId,
     String? notes,
     String? shiftId,
+    String? idempotencyKey,
   }) async {
     final currentState = state;
-    if (currentState is CustomerCreditsLoaded) {
-      try {
-        await _registerCreditPaymentUseCase(
-          customerId: currentState.creditAccount.profileId,
-          creditId: currentState.creditAccount.id,
-          amount: amount,
-          accountId: accountId,
-          orderId: orderId,
-          notes: notes,
-          shiftId: shiftId,
-        );
-        // Reload all data to refresh debt and movements
-        await loadCreditData(currentState.creditAccount.profileId);
-      } catch (e, st) {
+    if (currentState is! CustomerCreditsLoaded) return;
+
+    final targetCustomerId = currentState.creditAccount.effectiveCustomerId;
+    final result = await _registerCreditPaymentUseCase(
+      customerId: targetCustomerId,
+      creditId: currentState.creditAccount.id,
+      amount: amount,
+      accountId: accountId,
+      orderId: orderId,
+      notes: notes,
+      shiftId: shiftId,
+      idempotencyKey: idempotencyKey,
+    );
+
+    if (isClosed) return;
+
+    await result.fold(
+      (failure) async {
         LoggerService.e(
-          'Error registrando pago de crédito para ${currentState.creditAccount.profileId}',
-          tag: 'CUSTOMER_CREDITS_CUBIT',
-          error: e,
-          stackTrace: st,
+          'Error registrando pago de crédito para $targetCustomerId: ${failure.message}',
+          tag: _tag,
         );
-        emit(CustomerCreditsError(e.toString()));
-        emit(currentState);
-        rethrow;
-      }
-    }
+        throw Exception(failure.message);
+      },
+      (_) async => loadCreditData(targetCustomerId),
+    );
   }
 }

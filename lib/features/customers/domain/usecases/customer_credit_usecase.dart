@@ -1,7 +1,10 @@
+import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_list_result_entity.dart';
-import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customer_credits_repository.dart';
 
 @lazySingleton
@@ -10,17 +13,45 @@ class GetCreditAccountsUseCase {
 
   GetCreditAccountsUseCase(this.repository);
 
-  Future<CustomerCreditListResultEntity> call({
+  ({CustomerCreditListResultEntity data, bool isStale})? getCached({
     required int limit,
     required int offset,
     String? query,
     bool showOnlyWithDebt = false,
+  }) {
+    return repository.getCachedCreditAccountsPage(
+      limit: limit,
+      offset: offset,
+      query: query,
+      showOnlyWithDebt: showOnlyWithDebt,
+    );
+  }
+
+  ({
+    CustomerCreditListResultEntity data,
+    String searchQuery,
+    bool withDebtOnly,
+    int page,
+    int pageSize,
+    bool isStale,
+  })?
+  getLatestSnapshot() => repository.getLatestCachedSnapshot();
+
+  void invalidateCache() => repository.invalidateCache();
+
+  Future<Either<Failure, CustomerCreditListResultEntity>> call({
+    required int limit,
+    required int offset,
+    String? query,
+    bool showOnlyWithDebt = false,
+    bool forceRefresh = false,
   }) {
     return repository.getCreditAccounts(
       limit: limit,
       offset: offset,
       query: query,
       showOnlyWithDebt: showOnlyWithDebt,
+      forceRefresh: forceRefresh,
     );
   }
 }
@@ -31,8 +62,22 @@ class GetCreditAccountByCustomerUseCase {
 
   GetCreditAccountByCustomerUseCase(this.repository);
 
-  Future<CustomerCreditEntity?> call(String customerId) {
+  Future<Either<Failure, CustomerCreditEntity?>> call(String customerId) {
     return repository.getCreditAccountByCustomer(customerId);
+  }
+}
+
+@lazySingleton
+class SearchCustomersWithoutCreditUseCase {
+  final CustomerCreditsRepository repository;
+
+  SearchCustomersWithoutCreditUseCase(this.repository);
+
+  Future<Either<Failure, List<CustomerEntity>>> call(
+    String query, {
+    int limit = 8,
+  }) {
+    return repository.searchCustomersWithoutCredit(query, limit: limit);
   }
 }
 
@@ -42,7 +87,7 @@ class CreateCreditAccountUseCase {
 
   CreateCreditAccountUseCase(this.repository);
 
-  Future<CustomerCreditEntity> call({
+  Future<Either<Failure, CustomerCreditEntity>> call({
     required String customerId,
     required double creditLimit,
   }) {
@@ -59,11 +104,14 @@ class UpdateCreditLimitUseCase {
 
   UpdateCreditLimitUseCase(this.repository);
 
-  Future<CustomerCreditEntity> call({
+  Future<Either<Failure, CustomerCreditEntity>> call({
     required String creditId,
     required double newLimit,
   }) {
-    return repository.updateCreditLimit(creditId: creditId, newLimit: newLimit);
+    return repository.updateCreditLimit(
+      creditId: creditId,
+      newLimit: newLimit,
+    );
   }
 }
 
@@ -73,7 +121,10 @@ class ToggleCreditStatusUseCase {
 
   ToggleCreditStatusUseCase(this.repository);
 
-  Future<void> call(String creditId, bool isActive) {
+  Future<Either<Failure, CustomerCreditEntity>> call(
+    String creditId,
+    bool isActive,
+  ) {
     return repository.toggleCreditStatus(creditId, isActive);
   }
 }
@@ -84,7 +135,8 @@ class GetCreditMovementsUseCase {
 
   GetCreditMovementsUseCase(this.repository);
 
-  Future<({List<CreditMovementEntity> items, int totalCount})> call({
+  Future<Either<Failure, ({List<CreditMovementEntity> items, int totalCount})>>
+  call({
     required String creditId,
     required int limit,
     required int offset,
@@ -107,7 +159,7 @@ class RegisterCreditPaymentUseCase {
 
   RegisterCreditPaymentUseCase(this.repository);
 
-  Future<void> call({
+  Future<Either<Failure, void>> call({
     required String customerId,
     required String creditId,
     required double amount,
@@ -115,6 +167,7 @@ class RegisterCreditPaymentUseCase {
     String? orderId,
     String? notes,
     String? shiftId,
+    String? idempotencyKey,
   }) {
     return repository.registerPayment(
       customerId: customerId,
@@ -124,6 +177,7 @@ class RegisterCreditPaymentUseCase {
       orderId: orderId,
       notes: notes,
       shiftId: shiftId,
+      idempotencyKey: idempotencyKey,
     );
   }
 }

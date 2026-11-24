@@ -282,17 +282,14 @@ class DashboardCubit extends Cubit<DashboardState> {
   }
 
   Future<List<CustomerEntity>> _fetchTopCustomers({int limit = 5}) async {
-    try {
-      return await getTopCustomers(limit);
-    } catch (e, stack) {
+    final result = await getTopCustomers(limit);
+    return result.fold((failure) {
       LoggerService.e(
-        'Error cargando top clientes para dashboard',
+        'Error cargando top clientes para dashboard: ${failure.message}',
         tag: 'DASHBOARD_CUBIT',
-        error: e,
-        stackTrace: stack,
       );
       return [];
-    }
+    }, (customers) => customers);
   }
 
   Future<void> updateWarehouseFilter({

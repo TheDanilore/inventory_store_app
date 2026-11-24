@@ -1,5 +1,9 @@
+import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customers_global_stats_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customers_page_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customers_repository.dart';
 
 @lazySingleton
@@ -8,7 +12,23 @@ class GetCustomersUseCase {
 
   GetCustomersUseCase(this.repository);
 
-  Future<List<CustomerEntity>> call({
+  ({CustomersPageEntity data, bool isStale})? getCached({
+    required int limit,
+    required int offset,
+    String? query,
+    bool showOnlyWithDebt = false,
+  }) {
+    return repository.getCachedCustomersPage(
+      limit: limit,
+      offset: offset,
+      query: query,
+      showOnlyWithDebt: showOnlyWithDebt,
+    );
+  }
+
+  void invalidateCache() => repository.invalidateCache();
+
+  Future<Either<Failure, CustomersPageEntity>> call({
     required int limit,
     required int offset,
     String? query,
@@ -31,7 +51,7 @@ class GetCustomerDetailUseCase {
 
   GetCustomerDetailUseCase(this.repository);
 
-  Future<CustomerEntity> call(String customerId) {
+  Future<Either<Failure, CustomerEntity>> call(String customerId) {
     return repository.getCustomerDetail(customerId);
   }
 }
@@ -42,8 +62,14 @@ class GetGlobalStatsUseCase {
 
   GetGlobalStatsUseCase(this.repository);
 
-  Future<Map<String, dynamic>> call() {
-    return repository.getGlobalStats();
+  ({CustomersGlobalStatsEntity data, bool isStale})? getCached() {
+    return repository.getCachedGlobalStats();
+  }
+
+  Future<Either<Failure, CustomersGlobalStatsEntity>> call({
+    bool forceRefresh = false,
+  }) {
+    return repository.getGlobalStats(forceRefresh: forceRefresh);
   }
 }
 
@@ -53,15 +79,29 @@ class GetTopCustomersUseCase {
 
   GetTopCustomersUseCase(this.repository);
 
-  Future<List<CustomerEntity>> call(
+  ({List<CustomerEntity> data, bool isStale})? getCached(
     int limit, {
     DateTime? startDate,
     DateTime? endDate,
+  }) {
+    return repository.getCachedTopCustomers(
+      limit: limit,
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+
+  Future<Either<Failure, List<CustomerEntity>>> call(
+    int limit, {
+    DateTime? startDate,
+    DateTime? endDate,
+    bool forceRefresh = false,
   }) {
     return repository.getTopCustomers(
       limit,
       startDate: startDate,
       endDate: endDate,
+      forceRefresh: forceRefresh,
     );
   }
 }
@@ -72,7 +112,7 @@ class CreateCustomerUseCase {
 
   CreateCustomerUseCase(this.repository);
 
-  Future<CustomerEntity> call({
+  Future<Either<Failure, CustomerEntity>> call({
     required String fullName,
     String? phone,
     String? documentNumber,
@@ -93,7 +133,7 @@ class UpdateCustomerUseCase {
 
   UpdateCustomerUseCase(this.repository);
 
-  Future<CustomerEntity> call({
+  Future<Either<Failure, CustomerEntity>> call({
     required String customerId,
     required String fullName,
     String? phone,
@@ -118,7 +158,7 @@ class ToggleCustomerStatusUseCase {
 
   ToggleCustomerStatusUseCase(this.repository);
 
-  Future<void> call(String customerId, bool isActive) {
+  Future<Either<Failure, void>> call(String customerId, bool isActive) {
     return repository.toggleCustomerStatus(customerId, isActive);
   }
 }
@@ -129,7 +169,7 @@ class SaveCustomerFullProfileUseCase {
 
   SaveCustomerFullProfileUseCase(this.repository);
 
-  Future<void> call({
+  Future<Either<Failure, void>> call({
     String? customerId,
     required String fullName,
     String? phone,

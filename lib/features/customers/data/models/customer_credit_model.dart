@@ -2,7 +2,8 @@ import 'package:inventory_store_app/features/customers/domain/entities/customer_
 
 class CustomerCreditModel {
   final String id;
-  final String profileId;
+  final String? profileId;
+  final String? customerRecordId;
   final double creditLimit;
   final double currentDebt;
   final bool isActive;
@@ -12,7 +13,8 @@ class CustomerCreditModel {
 
   CustomerCreditModel({
     required this.id,
-    required this.profileId,
+    this.profileId,
+    this.customerRecordId,
     this.creditLimit = 0.00,
     this.currentDebt = 0.00,
     this.isActive = true,
@@ -21,31 +23,31 @@ class CustomerCreditModel {
     this.createdBy,
   });
 
-  /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
   factory CustomerCreditModel.fromJson(Map<String, dynamic> json) {
     return CustomerCreditModel(
       id: json['id'] as String,
-      profileId: json['profile_id'] as String,
+      profileId: json['profile_id'] as String?,
+      customerRecordId: json['customer_record_id'] as String?,
       creditLimit: (json['credit_limit'] as num? ?? 0.00).toDouble(),
       currentDebt: (json['current_debt'] as num? ?? 0.00).toDouble(),
       isActive: json['is_active'] as bool? ?? true,
       createdAt:
           json['created_at'] != null
-              ? DateTime.parse(json['created_at'] as String)
+              ? DateTime.tryParse(json['created_at'].toString())
               : null,
       updatedAt:
           json['updated_at'] != null
-              ? DateTime.parse(json['updated_at'] as String)
+              ? DateTime.tryParse(json['updated_at'].toString())
               : null,
       createdBy: json['created_by'] as String?,
     );
   }
 
-  /// Método para convertir el modelo de Dart a un mapa estructurado para insertar/actualizar en SQL
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'profile_id': profileId,
+      'customer_record_id': customerRecordId,
       'credit_limit': creditLimit,
       'current_debt': currentDebt,
       'is_active': isActive,
@@ -55,13 +57,12 @@ class CustomerCreditModel {
     };
   }
 
-  /// Método para calcular de forma rápida el crédito disponible en el cliente
   double get availableCredit => creditLimit - currentDebt;
 
-  /// Método copyWith ideal para el manejo de estados (Bloc, Riverpod, etc.)
   CustomerCreditModel copyWith({
     String? id,
     String? profileId,
+    String? customerRecordId,
     double? creditLimit,
     double? currentDebt,
     bool? isActive,
@@ -72,6 +73,7 @@ class CustomerCreditModel {
     return CustomerCreditModel(
       id: id ?? this.id,
       profileId: profileId ?? this.profileId,
+      customerRecordId: customerRecordId ?? this.customerRecordId,
       creditLimit: creditLimit ?? this.creditLimit,
       currentDebt: currentDebt ?? this.currentDebt,
       isActive: isActive ?? this.isActive,
@@ -85,6 +87,7 @@ class CustomerCreditModel {
     return CustomerCreditEntity(
       id: id,
       profileId: profileId,
+      customerRecordId: customerRecordId,
       creditLimit: creditLimit,
       currentDebt: currentDebt,
       isActive: isActive,
@@ -97,7 +100,8 @@ class CustomerCreditModel {
 
 class CreditAccountModel {
   final String creditId;
-  final String profileId;
+  final String? profileId;
+  final String? customerRecordId;
   final String partnerName;
   final String? partnerDocument;
   final String? partnerDocumentType;
@@ -105,6 +109,8 @@ class CreditAccountModel {
   final double creditLimit;
   final double currentDebt;
   final bool isActive;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   double get availableCredit =>
       (creditLimit - currentDebt).clamp(0.0, double.infinity);
@@ -114,7 +120,8 @@ class CreditAccountModel {
 
   CreditAccountModel({
     required this.creditId,
-    required this.profileId,
+    this.profileId,
+    this.customerRecordId,
     required this.partnerName,
     this.partnerDocument,
     this.partnerDocumentType,
@@ -122,13 +129,17 @@ class CreditAccountModel {
     required this.creditLimit,
     required this.currentDebt,
     required this.isActive,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory CreditAccountModel.fromJoin(Map<String, dynamic> json) {
-    final profile = json['profiles'] as Map<String, dynamic>? ?? {};
+    final profile = json['profiles'] as Map<String, dynamic>? ?? const {};
     return CreditAccountModel(
       creditId: json['id'] as String,
-      profileId: json['profile_id'] as String,
+      profileId: json['profile_id'] as String?,
+      customerRecordId:
+          json['customer_record_id'] as String? ?? profile['id'] as String?,
       partnerName: profile['full_name'] as String? ?? 'Cliente desconocido',
       partnerDocument: profile['document_number'] as String?,
       partnerDocumentType: profile['document_type'] as String?,
@@ -136,20 +147,43 @@ class CreditAccountModel {
       creditLimit: (json['credit_limit'] as num?)?.toDouble() ?? 0.0,
       currentDebt: (json['current_debt'] as num?)?.toDouble() ?? 0.0,
       isActive: json['is_active'] as bool? ?? false,
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.tryParse(json['created_at'].toString())
+              : null,
+      updatedAt:
+          json['updated_at'] != null
+              ? DateTime.tryParse(json['updated_at'].toString())
+              : null,
     );
   }
 
-  factory CreditAccountModel.fromView(Map<String, dynamic> json) {
+  factory CreditAccountModel.fromRpc(Map<String, dynamic> json) {
     return CreditAccountModel(
-      creditId: json['credit_id'],
-      profileId: json['profile_id'],
-      partnerName: json['partner_name'] ?? 'Cliente desconocido',
-      partnerDocument: json['partner_document'],
-      partnerDocumentType: json['partner_document_type'],
-      partnerPhone: json['partner_phone'],
-      creditLimit: (json['credit_limit'] as num?)?.toDouble() ?? 0,
-      currentDebt: (json['current_debt'] as num?)?.toDouble() ?? 0,
-      isActive: json['is_active'] ?? false,
+      creditId: (json['id'] ?? json['credit_id']) as String,
+      profileId: json['profile_id'] as String?,
+      customerRecordId: json['customer_record_id'] as String?,
+      partnerName:
+          (json['customer_name'] ?? json['partner_name']) as String? ??
+          'Cliente desconocido',
+      partnerDocument:
+          (json['customer_document'] ?? json['partner_document']) as String?,
+      partnerDocumentType:
+          (json['customer_document_type'] ?? json['partner_document_type'])
+              as String?,
+      partnerPhone:
+          (json['customer_phone'] ?? json['partner_phone']) as String?,
+      creditLimit: (json['credit_limit'] as num?)?.toDouble() ?? 0.0,
+      currentDebt: (json['current_debt'] as num?)?.toDouble() ?? 0.0,
+      isActive: json['is_active'] as bool? ?? false,
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.tryParse(json['created_at'].toString())
+              : null,
+      updatedAt:
+          json['updated_at'] != null
+              ? DateTime.tryParse(json['updated_at'].toString())
+              : null,
     );
   }
 
@@ -157,9 +191,12 @@ class CreditAccountModel {
     return CustomerCreditEntity(
       id: creditId,
       profileId: profileId,
+      customerRecordId: customerRecordId,
       creditLimit: creditLimit,
       currentDebt: currentDebt,
       isActive: isActive,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
       customerName: partnerName,
       customerDocument: partnerDocument,
       customerPhone: partnerPhone,

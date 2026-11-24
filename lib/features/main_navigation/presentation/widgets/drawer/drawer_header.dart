@@ -24,7 +24,7 @@ class DrawerHeaderWidget extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 20,
+        top: MediaQuery.paddingOf(context).top + 20,
         bottom: 20,
         left: 20,
         right: 20,
@@ -89,7 +89,7 @@ class DrawerHeaderWidget extends StatelessWidget {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      isAdmin ? 'Administrador' : 'Cliente',
+                      isAdmin ? 'Administrador' : 'Colaborador',
                       style: TextStyle(
                         color:
                             isDark

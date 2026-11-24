@@ -1,5 +1,7 @@
 import 'package:injectable/injectable.dart';
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -222,10 +224,89 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
   @override
   Future<BusinessInfoEntity> saveBusinessInfo(BusinessInfoEntity info) async {
     try {
+      final rpcResult = await _supabase.rpc(
+        'upsert_business_info_rpc',
+        params: {
+          'p_business_name': info.businessName,
+          'p_tax_id': info.taxId.isNotEmpty ? info.taxId : null,
+          'p_address': info.address.isNotEmpty ? info.address : null,
+          'p_phone': info.phone.isNotEmpty ? info.phone : null,
+          'p_logo_url': info.logoUrl.isNotEmpty ? info.logoUrl : null,
+          'p_loyalty_global_enabled': info.loyaltyGlobalEnabled,
+          'p_loyalty_customer_visible': info.loyaltyCustomerVisible,
+          'p_cash_register_mode': info.cashRegisterMode,
+        },
+      );
+
+      final savedEntity =
+          BusinessInfoModel.fromMap(
+            Map<String, dynamic>.from(rpcResult as Map),
+          ).toEntity();
+      await cacheBusinessInfo(savedEntity);
+      return savedEntity;
+    } on PostgrestException catch (e, st) {
+      // Fallback controlado únicamente si la migración SQL aún no se aplicó en el entorno.
+      if (e.code == 'PGRST202' || e.code == '42883') {
+        LoggerService.w(
+          'RPC upsert_business_info_rpc no disponible (${e.code}); usando fallback legacy',
+          tag: 'AppConfigRepository',
+          error: e,
+          stackTrace: st,
+        );
+        return _saveBusinessInfoLegacy(info);
+      }
+
+      LoggerService.e(
+        'Error Postgrest al guardar business_info: ${e.message}',
+        tag: 'AppConfigRepository',
+        error: e,
+        stackTrace: st,
+      );
+      if (e.code == '42501') {
+        throw UnauthorizedException(message: e.message, originalError: e);
+      }
+      if (e.code == '22023') {
+        throw ValidationException(message: e.message, originalError: e);
+      }
+      throw ServerException(
+        message: e.message,
+        code: e.code ?? 'SERVER_ERROR',
+        originalError: e,
+      );
+    } on TimeoutException catch (e, st) {
+      LoggerService.w(
+        'Timeout al guardar business_info',
+        tag: 'AppConfigRepository',
+        error: e,
+        stackTrace: st,
+      );
+      throw NetworkException(originalError: e);
+    } on SocketException catch (e, st) {
+      LoggerService.w(
+        'Error de socket al guardar business_info',
+        tag: 'AppConfigRepository',
+        error: e,
+        stackTrace: st,
+      );
+      throw NetworkException(originalError: e);
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado al guardar business_info',
+        tag: 'AppConfigRepository',
+        error: e,
+        stackTrace: st,
+      );
+      throw AppException(message: e.toString(), originalError: e);
+    }
+  }
+
+  Future<BusinessInfoEntity> _saveBusinessInfoLegacy(
+    BusinessInfoEntity info,
+  ) async {
+    try {
       final payload = BusinessInfoModel.fromEntity(info).toMap();
       String? finalId = info.id;
 
-      // Si no tenemos ID en la entidad, buscamos el registro existente (patrón Singleton)
       if (finalId == null) {
         final checkDb =
             await _supabase
@@ -269,15 +350,15 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
       }
     } on PostgrestException catch (e, st) {
       LoggerService.e(
-        'Error Postgrest al guardar business_info: ${e.message}',
+        'Error Postgrest en fallback legacy de business_info: ${e.message}',
         tag: 'AppConfigRepository',
         error: e,
         stackTrace: st,
       );
-      throw AppException(message: e.message, originalError: e);
+      throw ServerException(message: e.message, originalError: e);
     } catch (e, st) {
       LoggerService.e(
-        'Error inesperado al guardar business_info',
+        'Error inesperado en fallback legacy de business_info',
         tag: 'AppConfigRepository',
         error: e,
         stackTrace: st,
@@ -330,14 +411,12 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
       final authHealthUrl = Uri.parse('$url/auth/v1/health');
       final response = await http
           .get(authHealthUrl)
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () => throw Exception('Tiempo de espera agotado'),
-          );
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
-        throw Exception(
-          'El servidor no respondió correctamente (Status: ${response.statusCode})',
+        throw ServerException(
+          message:
+              'El servidor no respondió correctamente (Status: ${response.statusCode})',
         );
       }
 
@@ -345,14 +424,43 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
       await prefs.setString('SUPABASE_URL', url);
       await prefs.setString('SUPABASE_KEY', key);
       await prefs.setString('SUPABASE_ANON_KEY', key);
-    } catch (e, st) {
-      LoggerService.e(
-        'Fallo al cambiar la conexión de Supabase',
+    } on TimeoutException catch (e, st) {
+      LoggerService.w(
+        'Tiempo de espera agotado al validar conexión Supabase',
         tag: 'AppConfigRepository',
         error: e,
         stackTrace: st,
       );
+      throw NetworkException(
+        message: 'Tiempo de espera agotado al conectar con el servidor.',
+        originalError: e,
+      );
+    } on SocketException catch (e, st) {
+      LoggerService.w(
+        'Error de socket al validar conexión Supabase',
+        tag: 'AppConfigRepository',
+        error: e,
+        stackTrace: st,
+      );
+      throw NetworkException(originalError: e);
+    } on http.ClientException catch (e, st) {
+      LoggerService.w(
+        'Error HTTP de cliente al validar conexión Supabase',
+        tag: 'AppConfigRepository',
+        error: e,
+        stackTrace: st,
+      );
+      throw NetworkException(originalError: e);
+    } on AppException {
       rethrow;
+    } catch (e, st) {
+      LoggerService.e(
+        'Fallo inesperado al cambiar la conexión de Supabase',
+        tag: 'AppConfigRepository',
+        error: e,
+        stackTrace: st,
+      );
+      throw AppException(message: e.toString(), originalError: e);
     }
   }
 
@@ -396,7 +504,9 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
     try {
       final response = await _supabase
           .from('currencies')
-          .select()
+          .select(
+            'id, code, name, symbol, exchange_rate, is_base, is_active, updated_at',
+          )
           .order('is_base', ascending: false)
           .order('code', ascending: true);
 

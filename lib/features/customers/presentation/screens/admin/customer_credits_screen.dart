@@ -6,22 +6,22 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
-import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
-import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
-import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit/customer_credit_list_cubit.dart';
-import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit/customer_credit_list_state.dart';
-import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/credit_account_card.dart';
-import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/global_stats_bar.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/credit_account_sheet.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/customer_credit_payment_sheet.dart';
-import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/customer_credits_table.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/sections/customer_account_options_sheet.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/sections/customer_credits_content_section.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/sections/customer_credits_kpi_section.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/sections/customer_credits_pagination_section.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/sections/customer_credits_toolbar_section.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
+/// Pantalla modularizada de gestión de cuentas por cobrar de clientes.
+///
+/// Implementa Zero-Shimmer (Frame 0 desde CustomerCreditsLruCache + SWR),
+/// BlocSelectors por sección, FAB móvil corregido y limpieza estricta de recursos.
 class CustomerCreditsScreen extends StatelessWidget {
   const CustomerCreditsScreen({super.key});
 
@@ -45,28 +45,51 @@ class _CustomerCreditsScreenContent extends StatefulWidget {
 class _CustomerCreditsScreenContentState
     extends State<_CustomerCreditsScreenContent>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  late final TabController _tabController;
+  late final ValueNotifier<int> _tabIndexNotifier;
+  final ValueNotifier<bool> _isTableViewNotifier = ValueNotifier<bool>(true);
+
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _scrollController = ScrollController();
   Timer? _debounce;
-  bool _isTableView = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        context.read<CustomerCreditListCubit>().setTab(_tabController.index);
-        setState(() {});
-      }
-    });
+    final hydrated = context.read<CustomerCreditListCubit>().state;
+    final initialTab = hydrated.withDebtOnly ? 1 : 0;
+    if (hydrated.searchQuery.isNotEmpty) {
+      _searchCtrl.text = hydrated.searchQuery;
+    }
+
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: initialTab,
+    );
+    _tabIndexNotifier = ValueNotifier<int>(initialTab);
+    _tabController.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    final idx = _tabController.index;
+    _tabIndexNotifier.value = idx;
+    context.read<CustomerCreditListCubit>().setTab(idx);
+  }
+
+  void _selectTab(int index) {
+    if (_tabController.index == index) return;
+    _tabController.animateTo(index);
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    _tabIndexNotifier.dispose();
+    _isTableViewNotifier.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     _scrollController.dispose();
@@ -75,7 +98,7 @@ class _CustomerCreditsScreenContentState
   }
 
   void _onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () {
       if (mounted) {
         context.read<CustomerCreditListCubit>().setSearch(query);
@@ -83,12 +106,21 @@ class _CustomerCreditsScreenContentState
     });
   }
 
+  void _clearSearch() {
+    _searchCtrl.clear();
+    _debounce?.cancel();
+    context.read<CustomerCreditListCubit>().setSearch('');
+  }
+
   void _openCreateAccountModal({CustomerCreditEntity? accountToEdit}) {
+    final cubit = context.read<CustomerCreditListCubit>();
     CreditAccountSheet.show(
       context,
       accountToEdit: accountToEdit,
+      onCreateAccount: cubit.createCreditAccount,
+      onUpdateLimit: cubit.updateCreditLimit,
       onSaved: () {
-        if (mounted) context.read<CustomerCreditListCubit>().loadData();
+        if (mounted) cubit.loadData(forceRefresh: true, silent: true);
       },
     );
   }
@@ -99,16 +131,24 @@ class _CustomerCreditsScreenContentState
     CustomerCreditPaymentSheet.show(
       context,
       account: account,
-      onSaved: () => cubit.loadData(),
-      onSavePayment: (amount, accountId, orderId, notes, shiftId) async {
+      onSaved: () => cubit.loadData(forceRefresh: true, silent: true),
+      onSavePayment: (
+        amount,
+        accountId,
+        orderId,
+        notes,
+        shiftId,
+        idempotencyKey,
+      ) async {
         await cubit.registerPayment(
-          customerId: account.profileId,
+          customerId: account.effectiveCustomerId,
           creditId: account.id,
           amount: amount,
           accountId: accountId,
           orderId: orderId,
           notes: notes,
           shiftId: shiftId,
+          idempotencyKey: idempotencyKey,
         );
       },
     );
@@ -116,42 +156,44 @@ class _CustomerCreditsScreenContentState
 
   void _openMovementsScreen(CustomerCreditEntity account) {
     final cubit = context.read<CustomerCreditListCubit>();
+    final customerId = account.effectiveCustomerId;
     context
         .push(
-          '/customer-credit-movements/${account.id}?name=${Uri.encodeComponent(account.customerName ?? '')}&debt=${account.currentDebt}&limit=${account.creditLimit}&customerId=${account.profileId}',
+          '/customer-credit-movements/${account.id}?name=${Uri.encodeComponent(account.customerName ?? '')}&debt=${account.currentDebt}&limit=${account.creditLimit}&customerId=$customerId',
           extra: {
             'customerName': account.customerName,
             'currentDebt': account.currentDebt,
             'creditLimit': account.creditLimit,
-            'customerId': account.profileId,
+            'customerId': customerId,
           },
         )
         .then((_) {
-          if (mounted) cubit.loadData();
+          if (mounted) cubit.refreshIfNeeded();
         });
   }
 
   Future<void> _toggleAccountStatus(CustomerCreditEntity account) async {
     final cubit = context.read<CustomerCreditListCubit>();
-    try {
-      await cubit.toggleAccountStatus(account.id, account.isActive);
-      if (!mounted) return;
-      AppSnackbar.show(
+    final result = await cubit.toggleAccountStatus(
+      account.id,
+      account.isActive,
+    );
+    if (!mounted) return;
+    result.fold(
+      (failure) => AppSnackbar.show(
+        context,
+        message: failure.message,
+        type: SnackbarType.error,
+      ),
+      (updated) => AppSnackbar.show(
         context,
         message:
-            account.isActive
-                ? 'Línea de crédito suspendida'
-                : 'Línea de crédito reactivada',
+            updated.isActive
+                ? 'Línea de crédito reactivada'
+                : 'Línea de crédito suspendida',
         type: SnackbarType.success,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      AppSnackbar.show(
-        context,
-        message: 'Error al cambiar estado: $e',
-        type: SnackbarType.error,
-      );
-    }
+      ),
+    );
   }
 
   void _copyToClipboard(String text, String label) {
@@ -163,22 +205,20 @@ class _CustomerCreditsScreenContentState
     );
   }
 
-  // --- REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) ---
   bool get _isInputFieldFocused {
     if (_searchFocusNode.hasFocus) return true;
     final primaryFocus = FocusManager.instance.primaryFocus;
     if (primaryFocus == null) return false;
-    final context = primaryFocus.context;
-    if (context == null) return false;
-    return context.widget is EditableText ||
-        context.findAncestorWidgetOfExactType<EditableText>() != null ||
-        context.findAncestorStateOfType<EditableTextState>() != null;
+    final ctx = primaryFocus.context;
+    if (ctx == null) return false;
+    return ctx.widget is EditableText ||
+        ctx.findAncestorWidgetOfExactType<EditableText>() != null ||
+        ctx.findAncestorStateOfType<EditableTextState>() != null;
   }
 
   KeyEventResult _handleKeyShortcuts(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-    // Si el usuario está escribiendo en un campo de texto, aislar atajos
     if (_isInputFieldFocused) {
       if (event.logicalKey == LogicalKeyboardKey.escape) {
         _searchFocusNode.unfocus();
@@ -189,7 +229,6 @@ class _CustomerCreditsScreenContentState
 
     final key = event.logicalKey;
 
-    // Atajo [/] -> Enfocar buscador
     if (key == LogicalKeyboardKey.slash) {
       _searchFocusNode.requestFocus();
       _searchCtrl.selection = TextSelection(
@@ -198,16 +237,15 @@ class _CustomerCreditsScreenContentState
       );
       return KeyEventResult.handled;
     }
-
-    // Atajo [N] -> Nueva Línea de Crédito
     if (key == LogicalKeyboardKey.keyN) {
       _openCreateAccountModal();
       return KeyEventResult.handled;
     }
-
-    // Atajo [R] -> Recargar datos
     if (key == LogicalKeyboardKey.keyR) {
-      context.read<CustomerCreditListCubit>().loadData();
+      context.read<CustomerCreditListCubit>().loadData(
+        forceRefresh: true,
+        silent: true,
+      );
       AppSnackbar.show(
         context,
         message: 'Actualizando cuentas de clientes...',
@@ -215,89 +253,82 @@ class _CustomerCreditsScreenContentState
       );
       return KeyEventResult.handled;
     }
-
-    // Atajo [1] -> Pestaña Todas
     if (key == LogicalKeyboardKey.digit1 || key == LogicalKeyboardKey.numpad1) {
-      _tabController.animateTo(0);
-      setState(() {});
+      _selectTab(0);
       return KeyEventResult.handled;
     }
-
-    // Atajo [2] -> Pestaña Por Cobrar
     if (key == LogicalKeyboardKey.digit2 || key == LogicalKeyboardKey.numpad2) {
-      _tabController.animateTo(1);
-      setState(() {});
+      _selectTab(1);
       return KeyEventResult.handled;
     }
-
-    // Atajo [V] -> Alternar Vista (Cards vs Tabla)
     if (key == LogicalKeyboardKey.keyV) {
-      setState(() => _isTableView = !_isTableView);
+      _isTableViewNotifier.value = !_isTableViewNotifier.value;
       return KeyEventResult.handled;
     }
-
-    // Atajo [Esc] -> Limpiar búsqueda o desenfocar
     if (key == LogicalKeyboardKey.escape) {
-      if (_searchCtrl.text.isNotEmpty) {
-        _searchCtrl.clear();
-        _debounce?.cancel();
-        context.read<CustomerCreditListCubit>().setSearch('');
-      }
+      if (_searchCtrl.text.isNotEmpty) _clearSearch();
       _searchFocusNode.unfocus();
       return KeyEventResult.handled;
     }
-
     return KeyEventResult.ignored;
   }
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final isWide = width >= 640;
-    final isDesktop = width >= 1024;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final isWide = width >= 640;
+        final isDesktop = width >= 1024;
 
-    return Focus(
-      autofocus: true,
-      onKeyEvent: _handleKeyShortcuts,
-      child: BlocBuilder<CustomerCreditListCubit, CustomerCreditListState>(
-        builder: (context, state) {
-          final int accountsWithDebtCount =
-              state.accounts
-                  .where((a) => a.currentDebt > 0 && a.isActive)
-                  .length;
-
-          return AdminLayout(
+        return Focus(
+          autofocus: true,
+          onKeyEvent: _handleKeyShortcuts,
+          child: AdminLayout(
             title: 'Cuentas por Cobrar',
-            // FAB solo visible en móvil cuando no se está buscando
             floatingActionButton:
-                (isWide &&
-                        _tabController.index == 0 &&
-                        _searchCtrl.text.isEmpty)
-                    ? FloatingActionButton.extended(
-                      heroTag: 'add_customer_fab',
-                      backgroundColor: AppColors.primary,
-                      elevation: 4,
-                      icon: const Icon(Icons.add_rounded, color: Colors.white),
-                      label: const Text(
-                        'Nueva Línea',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      onPressed: _openCreateAccountModal,
+                !isWide
+                    ? AnimatedBuilder(
+                      animation: Listenable.merge([
+                        _tabIndexNotifier,
+                        _searchCtrl,
+                      ]),
+                      builder: (context, _) {
+                        if (_tabIndexNotifier.value != 0 ||
+                            _searchCtrl.text.isNotEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return FloatingActionButton.extended(
+                          heroTag: 'add_customer_credit_fab',
+                          backgroundColor: AppColors.primary,
+                          elevation: 4,
+                          icon: const Icon(
+                            Icons.add_rounded,
+                            color: Colors.white,
+                          ),
+                          label: const Text(
+                            'Nueva Línea',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          onPressed: _openCreateAccountModal,
+                        );
+                      },
                     )
                     : null,
             body: RefreshIndicator(
               color: AppColors.primary,
               onRefresh:
-                  () async =>
-                      context.read<CustomerCreditListCubit>().loadData(),
+                  () => context.read<CustomerCreditListCubit>().loadData(
+                    forceRefresh: true,
+                    silent: true,
+                  ),
               child: CustomScrollView(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
-                  // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
                   SliverToBoxAdapter(
                     child: AdminPageHeader(
                       title: 'Cuentas por Cobrar',
@@ -308,654 +339,63 @@ class _CustomerCreditsScreenContentState
                           label: 'Nueva Línea',
                           icon: Icons.add_rounded,
                           tooltip: 'Nueva línea de crédito (Atajo: N)',
-                          onPressed: () => _openCreateAccountModal(),
+                          onPressed: _openCreateAccountModal,
                         ),
                       ],
                     ),
                   ),
-
-                  // --- 1. KPI BENTO METRIC BAR ---
-                  if (!state.isLoading || state.accounts.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: GlobalStatsBar(
-                        totalDebt: state.totalDebt,
-                        activeAccounts: state.activeAccounts,
-                        suspendedAccounts: state.suspendedAccounts,
-                        maxedOutAccounts: state.maxedOutAccounts,
-                        accountsWithDebt: accountsWithDebtCount,
-                      ),
-                    ),
-
-                  // --- 2. TOOLBAR UNIFICADO DE BÚSQUEDA Y ACCIONES ---
-                  SliverToBoxAdapter(
-                    child: AdminProToolbar(
-                      isDesktop: isDesktop,
-                      searchController: _searchCtrl,
-                      searchFocusNode: _searchFocusNode,
-                      searchHint: 'Buscar por cliente, documento o teléfono...',
-                      onSearchChanged: _onSearchChanged,
-                      onClearSearch: () {
-                        _searchCtrl.clear();
-                        _debounce?.cancel();
-                        context.read<CustomerCreditListCubit>().setSearch('');
-                      },
-                      // Desktop/tablet: control segmentado existente.
-                      filterWidgets: [
-                        _buildSegmentedFilter(accountsWithDebtCount),
-                      ],
-                      // Móvil: el mismo filtro como chips en el sheet (estado en vivo).
-                      filterGroups: [
-                        AdminFilterGroup<int>(
-                          title: 'Cuentas',
-                          icon: Icons.account_balance_wallet_outlined,
-                          selected: _tabController.index,
-                          defaultValue: 0,
-                          onSelected: (i) {
-                            _tabController.animateTo(i);
-                            setState(() {});
-                          },
-                          options: [
-                            const AdminFilterOption(value: 0, label: 'Todas'),
-                            AdminFilterOption(
-                              value: 1,
-                              label:
-                                  accountsWithDebtCount > 0
-                                      ? 'Por cobrar ($accountsWithDebtCount)'
-                                      : 'Por cobrar',
-                              color: AppColors.danger,
-                            ),
-                          ],
+                  const CustomerCreditsKpiSection(),
+                  CustomerCreditsToolbarSection(
+                    isDesktop: isDesktop,
+                    searchController: _searchCtrl,
+                    searchFocusNode: _searchFocusNode,
+                    tabIndexNotifier: _tabIndexNotifier,
+                    isTableViewNotifier: _isTableViewNotifier,
+                    onSearchChanged: _onSearchChanged,
+                    onClearSearch: _clearSearch,
+                    onTabSelected: _selectTab,
+                    onRefresh:
+                        () => context.read<CustomerCreditListCubit>().loadData(
+                          forceRefresh: true,
+                          silent: true,
                         ),
-                      ],
-                      viewToggleConfig: AdminProViewToggleConfig(
-                        isTableView: _isTableView,
-                        onToggleTableView:
-                            (val) => setState(() => _isTableView = val),
-                      ),
-                      onRefresh:
-                          () =>
-                              context
-                                  .read<CustomerCreditListCubit>()
-                                  .loadData(),
-                      refreshTooltip: 'Refrescar créditos [R]',
-                    ),
                   ),
-
-                  // --- 3. CONTENIDO: CARDS O TABLA ---
-                  if (state.isLoading && state.accounts.isEmpty)
-                    (isWide && _isTableView)
-                        ? const SliverPadding(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          sliver: SliverToBoxAdapter(child: AppTableShimmer()),
-                        )
-                        : SliverPadding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          sliver:
-                              isWide
-                                  ? SliverGrid(
-                                    gridDelegate:
-                                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                                          maxCrossAxisExtent: 420,
-                                          mainAxisExtent: 220,
-                                          crossAxisSpacing: 16,
-                                          mainAxisSpacing: 16,
-                                        ),
-                                    delegate: SliverChildBuilderDelegate(
-                                      (context, index) => const AppShimmer(
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                        borderRadius: 16,
-                                      ),
-                                      childCount: 6,
-                                    ),
-                                  )
-                                  : SliverList(
-                                    delegate: SliverChildBuilderDelegate(
-                                      (context, index) => const Padding(
-                                        padding: EdgeInsets.only(bottom: 12),
-                                        child: AppShimmer(
-                                          width: double.infinity,
-                                          height: 180,
-                                          borderRadius: 16,
-                                        ),
-                                      ),
-                                      childCount: 4,
-                                    ),
-                                  ),
-                        )
-                  else if (state.errorMessage.isNotEmpty &&
-                      state.accounts.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: AppEmptyState(
-                        icon: Icons.error_outline_rounded,
-                        color: AppColors.danger,
-                        title: 'Error de carga',
-                        message: state.errorMessage,
-                        action: FilledButton.icon(
-                          onPressed:
+                  CustomerCreditsContentSection(
+                    isWide: isWide,
+                    isTableViewNotifier: _isTableViewNotifier,
+                    onPayTap: _openPaymentModal,
+                    onHistoryTap: _openMovementsScreen,
+                    onEditTap:
+                        (acc) => _openCreateAccountModal(accountToEdit: acc),
+                    onToggleStatusTap: _toggleAccountStatus,
+                    onShowAccountOptions:
+                        (acc) => CustomerAccountOptionsSheet.show(
+                          context,
+                          account: acc,
+                          onPay: () => _openPaymentModal(acc),
+                          onHistory: () => _openMovementsScreen(acc),
+                          onEditLimit:
                               () =>
-                                  context
-                                      .read<CustomerCreditListCubit>()
-                                      .loadData(),
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('Reintentar'),
+                                  _openCreateAccountModal(accountToEdit: acc),
+                          onToggleStatus: () => _toggleAccountStatus(acc),
                         ),
-                      ),
-                    )
-                  else if (state.accounts.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: AppEmptyState(
-                        icon: Icons.receipt_long_rounded,
-                        title:
-                            _searchCtrl.text.isNotEmpty
-                                ? 'No se encontraron resultados'
-                                : (_tabController.index == 1
-                                    ? 'No hay créditos con deuda pendiente'
-                                    : 'No hay líneas de crédito registradas'),
-                        message:
-                            _searchCtrl.text.isNotEmpty
-                                ? 'No hay resultados que coincidan con "${_searchCtrl.text}".'
-                                : 'Crea una nueva línea de crédito para autorizar ventas a plazo.',
-                        action: FilledButton(
-                          onPressed: () {
-                            if (_searchCtrl.text.isNotEmpty) {
-                              _searchCtrl.clear();
-                              _debounce?.cancel();
-                              context.read<CustomerCreditListCubit>().setSearch(
-                                '',
-                              );
-                            } else {
-                              _openCreateAccountModal();
-                            }
-                          },
-                          child: Text(
-                            _searchCtrl.text.isNotEmpty
-                                ? 'Limpiar filtro'
-                                : '+ Nueva Línea de Crédito',
-                          ),
+                    onCopy: _copyToClipboard,
+                    onCreateAccount: _openCreateAccountModal,
+                    onClearSearch: _clearSearch,
+                    onRetry:
+                        () => context.read<CustomerCreditListCubit>().loadData(
+                          forceRefresh: true,
                         ),
-                      ),
-                    )
-                  else if (isWide && _isTableView)
-                    // VISTA DE ALTA DENSIDAD: TABLA PRO
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      sliver: SliverToBoxAdapter(
-                        child: CustomerCreditsTable(
-                          accounts: state.accounts,
-                          onPayTap: _openPaymentModal,
-                          onHistoryTap: _openMovementsScreen,
-                          onEditTap:
-                              (account) => _openCreateAccountModal(
-                                accountToEdit: account,
-                              ),
-                          onToggleStatusTap: _toggleAccountStatus,
-                          onCopy: _copyToClipboard,
-                        ),
-                      ),
-                    )
-                  else
-                    // VISTA VISUAL: TARJETAS DINÁMICAS
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      sliver:
-                          isWide
-                              ? SliverGrid(
-                                gridDelegate:
-                                    const SliverGridDelegateWithMaxCrossAxisExtent(
-                                      maxCrossAxisExtent: 420,
-                                      mainAxisExtent: 220,
-                                      crossAxisSpacing: 16,
-                                      mainAxisSpacing: 16,
-                                    ),
-                                delegate: SliverChildBuilderDelegate((
-                                  context,
-                                  index,
-                                ) {
-                                  final account = state.accounts[index];
-                                  return CreditAccountCard(
-                                    account: account,
-                                    onTap:
-                                        () => _showAccountOptions(
-                                          context,
-                                          account,
-                                        ),
-                                    onPayTap:
-                                        account.isActive &&
-                                                account.currentDebt > 0
-                                            ? () => _openPaymentModal(account)
-                                            : null,
-                                    onHistoryTap:
-                                        () => _openMovementsScreen(account),
-                                  );
-                                }, childCount: state.accounts.length),
-                              )
-                              : SliverList(
-                                delegate: SliverChildBuilderDelegate((
-                                  context,
-                                  index,
-                                ) {
-                                  final account = state.accounts[index];
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: CreditAccountCard(
-                                      account: account,
-                                      onTap:
-                                          () => _showAccountOptions(
-                                            context,
-                                            account,
-                                          ),
-                                      onPayTap:
-                                          account.isActive &&
-                                                  account.currentDebt > 0
-                                              ? () => _openPaymentModal(account)
-                                              : null,
-                                      onHistoryTap:
-                                          () => _openMovementsScreen(account),
-                                    ),
-                                  );
-                                }, childCount: state.accounts.length),
-                              ),
-                    ),
-
-                  // --- 4. PAGINACIÓN FLUIDA AL PIE DEL SCROLL ---
-                  _buildPaginationSliver(
-                    currentPage: state.currentPage,
-                    totalPages: state.totalPages,
-                    totalItems: state.totalAccounts,
-                    isLoading: state.isLoading,
-                    context: context,
+                  ),
+                  CustomerCreditsPaginationSection(
+                    scrollController: _scrollController,
                   ),
                 ],
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildPaginationSliver({
-    required int currentPage,
-    required int totalPages,
-    required int totalItems,
-    required bool isLoading,
-    required BuildContext context,
-  }) {
-    if (isLoading || totalItems == 0) {
-      return const SliverToBoxAdapter(child: SizedBox(height: 24));
-    }
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-            boxShadow: AppColors.cardShadow(opacity: 0.03),
-          ),
-          child: AdminPageBlocks(
-            currentPage: currentPage,
-            totalPages: totalPages,
-            onPageChanged: (page) {
-              context.read<CustomerCreditListCubit>().setPage(page);
-              if (_scrollController.hasClients) {
-                _scrollController.animateTo(
-                  0,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutCubic,
-                );
-              }
-            },
-            totalItems: totalItems,
-            itemName: 'créditos de clientes',
-          ),
-        ),
-      ),
-    );
-  }
-
-  // --- SUBCOMPONENTES DE TOOLBAR ---
-
-  Widget _buildSegmentedFilter(int debtCount) {
-    return SizedBox(
-      height: 40,
-      child: Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _FilterTabButton(
-              title: 'Todas',
-              isSelected: _tabController.index == 0,
-              onTap: () {
-                _tabController.animateTo(0);
-                setState(() {});
-              },
-            ),
-            const SizedBox(width: 4),
-            _FilterTabButton(
-              title: 'Por Cobrar',
-              count: debtCount,
-              isSelected: _tabController.index == 1,
-              onTap: () {
-                _tabController.animateTo(1);
-                setState(() {});
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAccountOptions(BuildContext context, CustomerCreditEntity account) {
-    showModalBottomSheet(
-      context: context,
-      useRootNavigator: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      backgroundColor: Colors.white,
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          _getInitials(account.customerName),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              account.customerName ?? 'Cliente',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              'Deuda: S/ ${account.currentDebt.toStringAsFixed(2)} | Disp: S/ ${account.availableCredit.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1, color: AppColors.border),
-                const SizedBox(height: 8),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color:
-                          account.isActive && account.currentDebt > 0
-                              ? const Color(0xFFF0FDF4)
-                              : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.payments_rounded,
-                      color:
-                          account.isActive && account.currentDebt > 0
-                              ? const Color(0xFF16A34A)
-                              : AppColors.textMuted,
-                      size: 20,
-                    ),
-                  ),
-                  title: const Text(
-                    'Registrar Pago / Abono',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: Text(
-                    account.currentDebt <= 0
-                        ? 'Esta línea no presenta saldo pendiente'
-                        : 'Amortizar saldo deudor',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  enabled: account.isActive && account.currentDebt > 0,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _openPaymentModal(account);
-                  },
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.history_rounded,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
-                  ),
-                  title: const Text(
-                    'Ver historial de movimientos',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: const Text(
-                    'Revisar cargos, abonos y comprobantes',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _openMovementsScreen(account);
-                  },
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.edit_rounded,
-                      color: AppColors.textSecondary,
-                      size: 20,
-                    ),
-                  ),
-                  title: const Text(
-                    'Editar Límite de Crédito',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: const Text(
-                    'Modificar cupo total asignado',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _openCreateAccountModal(accountToEdit: account);
-                  },
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color:
-                          account.isActive
-                              ? const Color(0xFFFEF2F2)
-                              : const Color(0xFFF0FDF4),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      account.isActive
-                          ? Icons.block_rounded
-                          : Icons.check_circle_rounded,
-                      color:
-                          account.isActive
-                              ? AppColors.error
-                              : AppColors.success,
-                      size: 20,
-                    ),
-                  ),
-                  title: Text(
-                    account.isActive ? 'Suspender Línea' : 'Reactivar Línea',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color:
-                          account.isActive
-                              ? AppColors.error
-                              : AppColors.success,
-                    ),
-                  ),
-                  subtitle: Text(
-                    account.isActive
-                        ? 'Bloquear nuevas compras a crédito'
-                        : 'Habilitar compras a crédito',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _toggleAccountStatus(account);
-                  },
-                ),
-              ],
-            ),
           ),
         );
       },
-    );
-  }
-
-  String _getInitials(String? name) {
-    if (name == null || name.trim().isEmpty) return 'CL';
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Component: Filter Tab Button (Segmented Pill)
-// -----------------------------------------------------------------------------
-class _FilterTabButton extends StatelessWidget {
-  final String title;
-  final int? count;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _FilterTabButton({
-    required this.title,
-    this.count,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.surface : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow:
-              isSelected
-                  ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ]
-                  : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color:
-                    isSelected
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
-              ),
-            ),
-            if (count != null && count! > 0) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.danger : AppColors.dangerLight,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '$count',
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : AppColors.danger,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }

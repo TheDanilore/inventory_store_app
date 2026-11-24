@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/app_config/presentation/widgets/help/components/help_text.dart';
 
-/// Modelo de datos para una pestaña del Centro de Ayuda.
+/// Modelo de datos inmutable para una pestaña del Centro de Ayuda.
 class HelpTabModel {
   final String label;
   final IconData icon;
@@ -50,7 +51,7 @@ class HelpSearchHit {
   });
 }
 
-/// Tokens semánticos de diseño para el Centro de Ayuda (Claro / Oscuro).
+/// Tokens semánticos de diseño constantes (0 allocations por build) para el Centro de Ayuda.
 class HelpThemeTokens {
   final bool isDark;
   final Color bg;
@@ -78,25 +79,46 @@ class HelpThemeTokens {
     required this.primaryBtn,
   });
 
+  static const HelpThemeTokens light = HelpThemeTokens(
+    isDark: false,
+    bg: AppColors.background,
+    surface: AppColors.surface,
+    field: AppColors.surfaceDark,
+    border: AppColors.border,
+    strongBorder: Color(0xFFCBD5E1),
+    title: AppColors.textPrimary,
+    body: Color(0xFF334155),
+    muted: AppColors.textSecondary,
+    accent: Color(0xFF2563EB),
+    primaryBtn: Color(0xFF2563EB),
+  );
+
+  static const HelpThemeTokens dark = HelpThemeTokens(
+    isDark: true,
+    bg: AppColors.darkBackground,
+    surface: AppColors.darkSurface,
+    field: AppColors.darkBackground,
+    border: AppColors.darkBorder,
+    strongBorder: AppColors.darkBorderSubtle,
+    title: AppColors.darkTextPrimary,
+    body: Color(0xFFCBD5E1),
+    muted: AppColors.darkTextSecondary,
+    accent: Color(0xFF60A5FA),
+    primaryBtn: Color(0xFF3B82F6),
+  );
+
+  static const List<BoxShadow> _lightShadow = [
+    BoxShadow(color: Color(0x080F172A), blurRadius: 8, offset: Offset(0, 2)),
+  ];
+
+  /// Resuelve tokens sin instanciar nuevos objetos en cada hoja del árbol.
   factory HelpThemeTokens.of(BuildContext context) {
-    final dark = AppColors.isDark(context);
-    return HelpThemeTokens(
-      isDark: dark,
-      bg: AppColors.bg(context),
-      surface: AppColors.surf(context),
-      field: dark ? AppColors.darkBackground : AppColors.surfaceDark,
-      border: AppColors.brd(context),
-      strongBorder: dark ? AppColors.darkBorderSubtle : const Color(0xFFCBD5E1),
-      title: AppColors.txtPrimary(context),
-      body: dark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
-      muted: AppColors.txtSecondary(context),
-      accent: dark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
-      primaryBtn: dark ? const Color(0xFF3B82F6) : const Color(0xFF2563EB),
-    );
+    final scoped = HelpHighlightScope.maybeOf(context)?.tokens;
+    if (scoped != null) return scoped;
+    return AppColors.isDark(context) ? dark : light;
   }
 
   Color tone(Color c) => isDark ? Color.lerp(c, Colors.white, 0.45)! : c;
 
-  List<BoxShadow>? get shadow =>
-      isDark ? null : AppColors.cardShadow(opacity: 0.03);
+  List<BoxShadow>? get shadow => isDark ? null : _lightShadow;
 }

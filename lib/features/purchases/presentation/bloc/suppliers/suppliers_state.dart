@@ -1,163 +1,123 @@
 import 'package:equatable/equatable.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 
-abstract class SuppliersState extends Equatable {
-  const SuppliersState();
+enum SuppliersLoadStatus { initial, coldLoading, loaded, error }
 
-  @override
-  List<Object?> get props => [];
-}
+enum SupplierMutationStatus { idle, submitting, success, failure }
 
-class SuppliersInitial extends SuppliersState {}
+enum SupplierMutationKind { none, save, toggle, bulkToggle }
 
-class SuppliersLoading extends SuppliersState {
-  final List<SupplierEntity> currentSuppliers;
-  final String searchQuery;
-  final int currentPage;
-  final int totalCount;
+class SuppliersState extends Equatable {
+  static const int defaultPageSize = 15;
 
-  const SuppliersLoading({
-    this.currentSuppliers = const [],
-    this.searchQuery = '',
-    this.currentPage = 0,
-    this.totalCount = 0,
-  });
-
-  @override
-  List<Object?> get props => [
-    currentSuppliers,
-    searchQuery,
-    currentPage,
-    totalCount,
-  ];
-}
-
-class SuppliersLoaded extends SuppliersState {
+  final SuppliersLoadStatus status;
   final List<SupplierEntity> suppliers;
+  final SupplierStatsEntity stats;
   final String searchQuery;
+  final bool? filterIsActive;
   final int currentPage;
+  final int pageSize;
   final int totalCount;
+  final bool isRevalidating;
+  final bool isFromCache;
+  final Failure? loadFailure;
 
-  const SuppliersLoaded({
-    required this.suppliers,
-    required this.searchQuery,
-    required this.currentPage,
-    required this.totalCount,
+  final SupplierMutationStatus mutationStatus;
+  final SupplierMutationKind mutationKind;
+  final String? mutationMessage;
+  final Failure? mutationFailure;
+
+  const SuppliersState({
+    this.status = SuppliersLoadStatus.initial,
+    this.suppliers = const [],
+    this.stats = const SupplierStatsEntity.empty(),
+    this.searchQuery = '',
+    this.filterIsActive,
+    this.currentPage = 0,
+    this.pageSize = defaultPageSize,
+    this.totalCount = 0,
+    this.isRevalidating = false,
+    this.isFromCache = false,
+    this.loadFailure,
+    this.mutationStatus = SupplierMutationStatus.idle,
+    this.mutationKind = SupplierMutationKind.none,
+    this.mutationMessage,
+    this.mutationFailure,
   });
 
-  int get totalPages => totalCount == 0 ? 1 : (totalCount / 24).ceil();
+  int get totalPages => totalCount <= 0 ? 1 : (totalCount / pageSize).ceil();
 
-  SuppliersLoaded copyWith({
+  bool get isColdLoading =>
+      (status == SuppliersLoadStatus.coldLoading ||
+          status == SuppliersLoadStatus.initial) &&
+      suppliers.isEmpty;
+
+  bool get hasData => suppliers.isNotEmpty;
+
+  SuppliersState copyWith({
+    SuppliersLoadStatus? status,
     List<SupplierEntity>? suppliers,
+    SupplierStatsEntity? stats,
     String? searchQuery,
+    bool? filterIsActive,
+    bool clearFilterIsActive = false,
     int? currentPage,
+    int? pageSize,
     int? totalCount,
+    bool? isRevalidating,
+    bool? isFromCache,
+    Failure? loadFailure,
+    bool clearLoadFailure = false,
+    SupplierMutationStatus? mutationStatus,
+    SupplierMutationKind? mutationKind,
+    String? mutationMessage,
+    bool clearMutationMessage = false,
+    Failure? mutationFailure,
+    bool clearMutationFailure = false,
   }) {
-    return SuppliersLoaded(
+    return SuppliersState(
+      status: status ?? this.status,
       suppliers: suppliers ?? this.suppliers,
+      stats: stats ?? this.stats,
       searchQuery: searchQuery ?? this.searchQuery,
+      filterIsActive:
+          clearFilterIsActive ? null : (filterIsActive ?? this.filterIsActive),
       currentPage: currentPage ?? this.currentPage,
+      pageSize: pageSize ?? this.pageSize,
       totalCount: totalCount ?? this.totalCount,
+      isRevalidating: isRevalidating ?? this.isRevalidating,
+      isFromCache: isFromCache ?? this.isFromCache,
+      loadFailure: clearLoadFailure ? null : (loadFailure ?? this.loadFailure),
+      mutationStatus: mutationStatus ?? this.mutationStatus,
+      mutationKind: mutationKind ?? this.mutationKind,
+      mutationMessage:
+          clearMutationMessage
+              ? null
+              : (mutationMessage ?? this.mutationMessage),
+      mutationFailure:
+          clearMutationFailure
+              ? null
+              : (mutationFailure ?? this.mutationFailure),
     );
   }
 
   @override
-  List<Object?> get props => [suppliers, searchQuery, currentPage, totalCount];
-}
-
-class SuppliersError extends SuppliersState {
-  final String message;
-  final List<SupplierEntity> currentSuppliers;
-  final String searchQuery;
-  final int currentPage;
-  final int totalCount;
-
-  const SuppliersError({
-    required this.message,
-    this.currentSuppliers = const [],
-    this.searchQuery = '',
-    this.currentPage = 0,
-    this.totalCount = 0,
-  });
-
-  @override
   List<Object?> get props => [
-    message,
-    currentSuppliers,
+    status,
+    suppliers,
+    stats,
     searchQuery,
+    filterIsActive,
     currentPage,
+    pageSize,
     totalCount,
-  ];
-}
-
-class SupplierSaving extends SuppliersState {
-  final List<SupplierEntity> currentSuppliers;
-  final String searchQuery;
-  final int currentPage;
-  final int totalCount;
-
-  const SupplierSaving({
-    required this.currentSuppliers,
-    required this.searchQuery,
-    required this.currentPage,
-    required this.totalCount,
-  });
-
-  @override
-  List<Object?> get props => [
-    currentSuppliers,
-    searchQuery,
-    currentPage,
-    totalCount,
-  ];
-}
-
-class SupplierSaveSuccess extends SuppliersState {
-  final List<SupplierEntity> currentSuppliers;
-  final String searchQuery;
-  final int currentPage;
-  final int totalCount;
-  final String message;
-
-  const SupplierSaveSuccess({
-    required this.currentSuppliers,
-    required this.searchQuery,
-    required this.currentPage,
-    required this.totalCount,
-    required this.message,
-  });
-
-  @override
-  List<Object?> get props => [
-    currentSuppliers,
-    searchQuery,
-    currentPage,
-    totalCount,
-    message,
-  ];
-}
-
-class SupplierSaveError extends SuppliersState {
-  final List<SupplierEntity> currentSuppliers;
-  final String searchQuery;
-  final int currentPage;
-  final int totalCount;
-  final String message;
-
-  const SupplierSaveError({
-    required this.currentSuppliers,
-    required this.searchQuery,
-    required this.currentPage,
-    required this.totalCount,
-    required this.message,
-  });
-
-  @override
-  List<Object?> get props => [
-    currentSuppliers,
-    searchQuery,
-    currentPage,
-    totalCount,
-    message,
+    isRevalidating,
+    isFromCache,
+    loadFailure,
+    mutationStatus,
+    mutationKind,
+    mutationMessage,
+    mutationFailure,
   ];
 }

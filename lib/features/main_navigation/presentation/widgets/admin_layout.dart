@@ -12,6 +12,7 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_desktop_top_bar.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_shell_layout.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/notifications/notification_bell.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/top_bar/top_bar_action_utils.dart';
 import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 export 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_shell_layout.dart';
 
@@ -442,20 +443,6 @@ class _AdminLayoutState extends State<AdminLayout> {
     }
   }
 
-  static bool _isRefreshWidget(Widget w) {
-    if (w is IconButton) {
-      final icon = w.icon;
-      if (icon is Icon &&
-          (icon.icon == Icons.refresh_rounded || icon.icon == Icons.refresh)) {
-        return true;
-      }
-      final tooltip = w.tooltip?.toLowerCase() ?? '';
-      if (tooltip.contains('actualizar') ||
-          tooltip.contains('refrescar') ||
-          tooltip.contains('recargar')) {
-        return true;
-      }
-    }
-    return false;
-  }
+  static bool _isRefreshWidget(Widget w) =>
+      TopBarActionUtils.isRefreshWidget(w);
 }

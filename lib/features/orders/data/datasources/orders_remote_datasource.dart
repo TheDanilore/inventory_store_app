@@ -563,7 +563,9 @@ class OrdersRemoteDataSource {
             .from('orders')
             .select('id')
             .eq('status', 'PENDING')
-            .count(CountOption.exact);
+            .limit(0)
+            .count(CountOption.exact)
+            .timeout(const Duration(seconds: 10));
 
         if (!controller.isClosed) {
           controller.add(response.count);
@@ -575,6 +577,9 @@ class OrdersRemoteDataSource {
           error: e,
           stackTrace: st,
         );
+        if (!controller.isClosed) {
+          controller.addError(e, st);
+        }
       }
     }
 
@@ -597,7 +602,6 @@ class OrdersRemoteDataSource {
               final isRelevant =
                   newStatus == 'PENDING' ||
                   oldStatus == 'PENDING' ||
-                  payload.eventType == PostgresChangeEvent.insert ||
                   payload.eventType == PostgresChangeEvent.delete;
 
               if (isRelevant) {
